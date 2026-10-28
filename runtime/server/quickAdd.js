@@ -8,6 +8,7 @@ const templates = require('./templates');
 const agents = require('./agents');
 const ledger = require('./ledger');
 const suggest = require('./suggest');
+const { resolveAgentRunBin } = require('./resolve-bin');
 
 const NEAR_DUPLICATE_THRESHOLD = 0.6;
 
@@ -40,7 +41,7 @@ function findReusableSpec(text, workspace) {
 }
 
 function agentRunBin(cfg) {
-  return cfg.agent?.agentRunBin || '/home/eligapris/.local/bin/agent-run';
+  return resolveAgentRunBin(cfg);
 }
 
 function buildInterpreterPrompt(text, workspaceHint) {

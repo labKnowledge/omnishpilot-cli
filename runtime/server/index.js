@@ -22,6 +22,7 @@ const { buildImportTemplate, buildCampaignPlanTemplate, stripGuideForImport, str
 const scheduler = require('./scheduler');
 const calendar = require('./calendar');
 const auth = require('./auth');
+const webhooks = require('./webhooks');
 
 const app = express();
 const cfg = loadConfig();
@@ -29,6 +30,9 @@ const PUBLIC = path.join(__dirname, '..', 'public');
 
 app.set('trust proxy', 1);
 app.use(express.json({ limit: '2mb' }));
+
+// Webhook triggers (GitHub / Linear / generic) — token-gated, auth-middleware bypassed below.
+webhooks.mountWebhooks(app);
 
 function writeImportTemplateFile() {
   try {
@@ -68,8 +72,22 @@ syncAllWorkspaces();
 // have real signal from the very first request instead of starting stone cold.
 ledger.bootstrapFromTasksIfEmpty();
 
+function packageVersion() {
+  const candidates = [
+    path.join(__dirname, '..', 'package.json'),
+    path.join(__dirname, '..', '..', 'package.json'),
+    path.join(__dirname, '..', '..', 'omnishpilot-cli', 'package.json'),
+  ];
+  for (const p of candidates) {
+    try {
+      if (fs.existsSync(p)) return JSON.parse(fs.readFileSync(p, 'utf8')).version || '0.0.0';
+    } catch { /* try next */ }
+  }
+  return '0.0.0';
+}
+
 app.get('/api/health', (_req, res) => {
-  res.json({ ok: true, service: 'omnishpilot', version: require('../package.json').version });
+  res.json({ ok: true, service: 'omnishpilot', version: packageVersion() });
 });
 
 app.get('/api/auth/status', (req, res) => {
@@ -116,12 +134,17 @@ app.use((req, res, next) => {
   if (PUBLIC_ASSET_PATHS.has(req.path)) {
     return next();
   }
+  // Token-gated webhooks are mounted above; keep them outside session auth.
+  if (req.path.startsWith('/hooks/') || req.path.startsWith('/api/hooks/')) {
+    return next();
+  }
   return auth.requireAuth(req, res, next);
 });
 
 app.use(express.static(PUBLIC));
 
 const DELIVERY_MODES = [
+  { id: 'pack', label: 'Morning pack', description: 'Gate + artifacts + diff — wake to a verdict' },
   { id: 'message', label: 'Short message', description: 'Brief finish notice only' },
   { id: 'summary', label: 'Message + summary', description: 'Includes social copy or result text' },
   { id: 'files', label: 'Send files', description: 'Ship output files through Omnish' },
@@ -164,7 +187,7 @@ app.get('/api/agents', (_req, res) => {
 app.post('/api/agents/preview', (req, res) => {
   const { inputs = {}, instructions = {}, title, summary, agentId, commandTemplate, flattenPrompt, model } = req.body || {};
   const taskLike = { inputs, instructions, title, summary };
-  const bin = cfg.agent?.agentRunBin || '/home/eligapris/.local/bin/agent-run';
+  const bin = agents.resolveAgentRunBin(cfg);
 
   const noopLog = { write: () => {} };
   const { path: workspacePath } = agent.resolveWorkspace(taskLike, cfg, noopLog);
@@ -583,6 +606,7 @@ function createTaskFromBody(rawBody) {
     schedule: prepared.schedule || { type: 'manual' },
     instructions,
     inputs,
+    acceptance: prepared.acceptance || null,
     outputs: template.outputs,
     connector: template.connector,
     source: prepared.source || 'user',

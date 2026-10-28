@@ -6,6 +6,8 @@ const { GENERIC_AGENT } = require('./ids');
 const agents = require('../agents');
 const store = require('../store');
 const sandbox = require('../sandbox');
+const acceptance = require('../acceptance');
+const { resolveAgentRunBin } = require('../resolve-bin');
 
 function parseEnvFile(filePath) {
   if (!fs.existsSync(filePath)) return {};
@@ -106,6 +108,20 @@ function runGenericAgent(task, logPath) {
 
   const { path: workspacePath, warned } = resolveWorkspace(task, cfg, logStream);
   const promptFile = path.join(outDir, 'agent-prompt.md');
+  const profile = acceptance.resolveAcceptance(task, cfg);
+  const acceptanceBlock = profile.enabled
+    ? `
+## Acceptance gates (enforced after you exit)
+Your run is NOT done until these pass — the harness will re-queue you on failure:
+${profile.requiredArtifacts.map((a) => `- Required artifact: ${a} (prefer under the output directory)`).join('\n')}
+${profile.testCommand ? `- Test command (must exit 0): \`${profile.testCommand}\`` : ''}
+${profile.text ? `\nCriteria:\n${profile.text}\n` : ''}
+Always write \`result.md\` in the output directory summarizing what changed and how you verified it.
+`
+    : `
+## When finishing
+Write \`result.md\` in the output directory summarizing what you did and where outputs are.
+`;
   const fullPrompt = `${agentPromptPath(task)}
 
 ## Output directory
@@ -114,14 +130,18 @@ Save all deliverables here: ${outDir}
 ## Agent tools
 Use available tools (GenerateImage, file write, shell) as needed to complete the goal.
 For images: save PNG files into the output directory and write a brief result.md summary.
-${progressUpdatesBlock(cfg, task)}`;
+${acceptanceBlock}${progressUpdatesBlock(cfg, task)}`;
   fs.writeFileSync(promptFile, fullPrompt);
   logStream.write(`workspace: ${workspacePath}${warned ? ' (fallback)' : ''}\n`);
   logStream.write(`output: ${outDir}\n`);
   logStream.write(`prompt: ${promptFile}\n`);
 
   const env = buildAgentEnv(cfg);
-  const agentRunBin = cfg.agent?.agentRunBin || '/home/eligapris/.local/bin/agent-run';
+  try {
+    const { augmentedPath } = require('../resolve-bin');
+    env.PATH = augmentedPath(env.PATH || process.env.PATH || '');
+  } catch { /* ignore */ }
+  const agentRunBin = resolveAgentRunBin(cfg);
   const requestedAgentId = task.inputs?.agentId || task.execution?.agentId;
   const agentId = agents.pickAgent({ requestedId: requestedAgentId }) || requestedAgentId || 'auto';
   if (requestedAgentId && requestedAgentId !== 'auto' && agentId !== requestedAgentId) {

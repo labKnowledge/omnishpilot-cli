@@ -12,7 +12,11 @@
     "maxConcurrent": 1,
     "supervisorIntervalMs": 300000,
     "retryBackoffSec": 120,
-    "heartbeatIntervalMinutes": 10
+    "heartbeatIntervalMinutes": 10,
+    "hangIdleMinutes": 12,
+    "hangHardMinutes": 45,
+    "hangCheckIntervalMs": 30000,
+    "jobTimeoutMinutes": 240
   },
   "scheduler": {
     "defaultTimezone": "America/Denver",
@@ -30,6 +34,7 @@
     "password": "change-me"
   },
   "agent": {
+    "agentRunBin": "agent-run",
     "cursorAgent": "cursor-agent",
     "cursorModel": "",
     "defaultWorkspace": "",
@@ -44,6 +49,35 @@
     "requireForAutonomous": true,
     "hidePaths": ["~/.ssh", "~/.aws", "~/.gnupg", "~/.kube", "~/.docker"],
     "extraBindRw": []
+  },
+  "acceptance": {
+    "enabled": true,
+    "always": false,
+    "defaultArtifacts": ["result.md"],
+    "defaultTestCommand": null,
+    "verifier": false,
+    "soft": false,
+    "testTimeoutSec": 300,
+    "verifierTimeoutSec": 600
+  },
+  "worktree": {
+    "enabled": true,
+    "root": "",
+    "baseRef": "HEAD",
+    "keepOnSuccess": false,
+    "keepOnFailure": true
+  },
+  "webhooks": {
+    "enabled": true,
+    "token": "",
+    "defaultTemplateId": "agent-task",
+    "defaultWorkspace": "",
+    "defaultRunMode": "auto",
+    "defaultAcceptance": "Write result.md summarizing what you did. Verify your work.",
+    "verifier": false
+  },
+  "delivery": {
+    "morningPack": true
   },
   "workspaces": []
 }

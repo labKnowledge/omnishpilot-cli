@@ -1,56 +1,66 @@
 # OmnishPilot — capability map
 
-Research snapshot (2026-10-28) of what makes a **killer** local autonomy harness, what we have, and what to add next.
+Research + implementation snapshot of the local autonomy harness.
 
-## Killer bar (from field + competitors)
+## Killer bar
 
-| Need | Why it matters | Who already does a slice |
-|------|----------------|--------------------------|
-| Skip per-tool approvals | Approval walls kill automation | Claude `--dangerously-skip-permissions`, Cursor `--yolo`, Codex YOLO |
-| Real isolation | Skip-permissions without a box = host YOLO | Claude sandbox runtime, bwrap patterns, Docker/microVM |
-| Any agent on the machine | Avoid vendor lock | Open Run, Agent Cron, agent-run |
-| Job lifecycle | Fire-and-forget needs queue, logs, retry, notify | OmnishPilot, Open Run, loop-harness |
-| Done ≠ “model stopped” | Acceptance / verifier gates | loop-harness (verifier agent), CI |
-| Failover | Rate limits / outages | OmnishPilot preferredOrder + cooldown |
-| Soak / deny-test | Prove autonomy + escape blocked | OmnishPilot `sandbox deny-test` |
+| Need | Why it matters | Status |
+|------|----------------|--------|
+| Skip per-tool approvals | Approval walls kill automation | **have** (YOLO inside sandbox) |
+| Real isolation | Skip-permissions without a box = host YOLO | **have** (bwrap / docker / firejail) |
+| Any agent on the machine | Avoid vendor lock | **have** (agent-run) |
+| Job lifecycle | Fire-and-forget needs queue, logs, retry, notify | **have** |
+| Done ≠ “model stopped” | Acceptance / verifier gates | **have** |
+| Failover + resume-at-reset | Rate limits / outages | **have** |
+| Hang / timeout kill | Silent TTY waits | **have** |
+| Worktree isolation | Dirty checkout / parallel collisions | **have** |
+| Webhook wake | GitHub / Linear start a job | **have** |
+| Morning pack | Wake to a verdict, not a log wall | **have** |
+| Soak / deny-test | Prove autonomy + escape blocked | **have** |
 
 ## Have now
 
-- Multi-agent via `agent-run` (cursor-agent, claude, agy, …)
+- Multi-agent via `agent-run` (PATH-resolved; no hardcoded home path)
 - Unattended command templates (`--yolo` / `--dangerously-skip-permissions`)
-- **Sandbox wrap** on generic-agent jobs (`server/sandbox.js`, bwrap default)
-- `omnishpilot doctor` sandbox + autonomous gate
-- `omnishpilot sandbox status|check|deny-test`
-- `omnishpilot capabilities`
+- Sandbox wrap + `doctor` / `deny-test` / autonomous gate
 - Scheduler, worker, supervisor heartbeats, Omnish notify/delivery
+- **Acceptance profiles** — required artifacts + optional test command; retry until green
+- **Verifier agent** — optional second pass must print `VERDICT: PASS`
+- **Git worktree per run** — generic-agent jobs on git workspaces
+- **Prompt-hang detector** — approval/TTY idle + hard job timeout
+- **Rate-limit failover** — cooldown with parsed reset; resume-at-reset when all limited
+- **Webhook triggers** — `POST /hooks/github|linear|generic?token=…`
+- **Morning pack** — gate + artifacts + diff summary via Omnish
 - Quick-add plain language → job spec
-- Workload templates (social video, research, code change) as proof jobs
+- Workload templates (social video, research, code change)
 
-## Add next (priority)
-
-1. **Acceptance profiles** — required artifacts / test command; supervisor retries until green; human reviews the pack, not every Bash.
-2. **Git worktree per run** — never touch the dirty checkout (Open Run / loop-harness pattern).
-3. **Verifier agent** — second pass must print PASS before delivery/ship.
-4. **Prompt-hang detector** — if agent waits on TTY/approval, mark failed (don’t sit in `running`).
-5. **Webhook triggers** — GitHub/Linear wake a sandboxed job.
-6. **macOS Seatbelt / Windows isolation** — parity beyond Linux bwrap.
-7. **Resource limits** — cgroups/timeouts so a runaway agent can’t melt the box.
-
-## Config surface
+## Config surface (new)
 
 ```json
-"sandbox": {
-  "enabled": true,
-  "backend": "auto",
-  "network": true,
-  "requireForAutonomous": true,
-  "hidePaths": ["~/.ssh", "~/.aws", "~/.gnupg", "~/.kube", "~/.docker"],
-  "extraBindRw": []
+"acceptance": { "enabled": true, "defaultArtifacts": ["result.md"], "verifier": false },
+"worktree": { "enabled": true, "keepOnFailure": true },
+"webhooks": { "enabled": true, "token": "set-me" },
+"worker": {
+  "hangIdleMinutes": 12,
+  "hangHardMinutes": 45,
+  "jobTimeoutMinutes": 240
 }
 ```
+
+## Webhooks
+
+Set `webhooks.token` (or `OMNISHPILOT_WEBHOOK_TOKEN`), then:
+
+```bash
+curl -X POST "http://127.0.0.1:4580/hooks/generic?token=YOUR_TOKEN" \
+  -H 'content-type: application/json' \
+  -d '{"title":"Triage bug","goal":"Investigate and write result.md","workspace":"/path/to/repo"}'
+```
+
+GitHub / Linear payloads are summarized automatically into an `agent-task`.
 
 ## Non-goals (for now)
 
 - Being simpler than Claude routines
 - Paid SaaS / multi-tenant billing
-- Replacing Open Run’s git-diff PR UI
+- Replacing Open Run’s full git-diff PR UI (we deliver a pack + worktree path instead)

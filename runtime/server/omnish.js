@@ -1,3 +1,5 @@
+'use strict';
+
 const fs = require('fs');
 const { spawn } = require('child_process');
 const { loadConfig } = require('./config');
@@ -40,7 +42,7 @@ function notify(title, body, peer) {
   const cfg = loadConfig();
   if (!cfg.omnish?.enabled) return Promise.resolve({ skipped: true });
   const target = peer || cfg.omnish.peer || '*';
-  const safe = String(body).replace(/\n/g, ' ').slice(0, 900);
+  const safe = String(body).replace(/\n/g, ' · ').slice(0, 900);
   return runOmnish(['i', '-c', `/sendto ${target} -t ${quoteArg(title)} -- ${safe}`]);
 }
 
@@ -48,7 +50,7 @@ function sendFiles(peer, filePaths, caption = '') {
   const cfg = loadConfig();
   if (!cfg.omnish?.enabled) return Promise.resolve({ skipped: true });
   const target = peer || cfg.omnish.peer || '*';
-  const files = (filePaths || []).filter(p => p && fs.existsSync(p) && fs.statSync(p).isFile());
+  const files = (filePaths || []).filter((p) => p && fs.existsSync(p) && fs.statSync(p).isFile());
   if (!files.length) return Promise.resolve({ ok: false, error: 'no_files' });
   const safeCaption = String(caption).replace(/\n/g, ' ').slice(0, 200);
   const fileArg = files.map(quotePath).join(',');
@@ -78,8 +80,12 @@ async function agentLimitSwitch(task, fromAgentId, toAgentId) {
   return notify(`⇄ ${task.title}`, `Agent "${fromAgentId}" reached its usage limit — switching to "${toAgentId}" and retrying.`);
 }
 
-async function agentsAllLimited(task, order) {
-  return notify(`⚠ ${task.title}`, `All agents (${order.join(', ')}) are currently rate-limited or unavailable.`);
+async function agentsAllLimited(task, order, resumeAt) {
+  const when = resumeAt ? ` Auto-resume at ${resumeAt}.` : '';
+  return notify(
+    `⚠ ${task.title}`,
+    `All agents (${(order || []).join(', ')}) are rate-limited or unavailable.${when}`,
+  );
 }
 
 async function progressHeartbeat(task, elapsedMin, lastLine) {
@@ -87,4 +93,14 @@ async function progressHeartbeat(task, elapsedMin, lastLine) {
   return notify(`⏳ ${task.title}`, `Still working — ${elapsedMin}m in.${activity}`);
 }
 
-module.exports = { notify, sendFiles, taskStarted, taskCompleted, taskFailed, supervisorAlert, agentLimitSwitch, agentsAllLimited, progressHeartbeat };
+module.exports = {
+  notify,
+  sendFiles,
+  taskStarted,
+  taskCompleted,
+  taskFailed,
+  supervisorAlert,
+  agentLimitSwitch,
+  agentsAllLimited,
+  progressHeartbeat,
+};

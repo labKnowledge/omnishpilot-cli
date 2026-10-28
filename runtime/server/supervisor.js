@@ -1,7 +1,10 @@
+'use strict';
+
 const store = require('./store');
-const worker = require('./worker');
 const omnish = require('./omnish');
 const registry = require('./connectors/registry');
+const procUtils = require('./proc-utils');
+const hang = require('./hang');
 const { loadConfig } = require('./config');
 
 async function checkRunningTasks() {
@@ -21,17 +24,63 @@ async function checkRunningTasks() {
   }
 }
 
-const LOG_NOISE = /^(===|workspace:|output:|prompt:|NOTE:|WARN:)/;
+const LOG_NOISE = /^(===|workspace:|output:|prompt:|NOTE:|WARN:|sandbox:)/;
 
 function lastMeaningfulLogLine(logPath) {
   const tail = store.tailLog(logPath, 40);
-  const lines = tail.split('\n').map(l => l.trim()).filter(l => l && !LOG_NOISE.test(l));
+  const lines = tail.split('\n').map((l) => l.trim()).filter((l) => l && !LOG_NOISE.test(l));
   return lines.pop() || '';
 }
 
-// Guaranteed heartbeat for long-running jobs, independent of whether the agent itself sends
-// progress updates (see progressUpdatesBlock in connectors/agent.js) — the user should never
-// be left wondering if a job is still alive just because the agent didn't self-report.
+function refreshLogActivity(task) {
+  const logPath = store.taskLogPath(task.id);
+  const act = hang.logActivity(logPath);
+  const ex = task.execution || {};
+  const prevBytes = ex.lastLogBytes || 0;
+  if (act.size !== prevBytes) {
+    store.updateTask(task.id, {
+      execution: {
+        ...ex,
+        lastLogBytes: act.size,
+        lastLogAt: new Date().toISOString(),
+      },
+    });
+    return store.getTask(task.id);
+  }
+  return task;
+}
+
+/**
+ * Kill jobs that are hung on approval/TTY or past hard timeout.
+ * Marks execution so worker.waitChild resolves with code -2.
+ */
+async function checkHangsAndTimeouts() {
+  const cfg = loadConfig();
+  for (let task of store.runningTasks()) {
+    if (!task.execution?.pid) continue;
+    task = refreshLogActivity(task);
+    const logTail = store.tailLog(store.taskLogPath(task.id), 80);
+    const health = hang.evaluateRunHealth(task, { cfg, logTail });
+    if (health.action === 'ok') continue;
+
+    const flag = health.action === 'timeout' ? 'killedForTimeout' : 'killedForHang';
+    const reason = health.matched
+      ? `${health.reason} (saw: "${health.matched}")`
+      : health.reason;
+
+    // Kill only — worker.waitChild / executeTask owns requeue + attempt accounting.
+    store.updateTask(task.id, {
+      execution: {
+        ...store.getTask(task.id).execution,
+        [flag]: true,
+        error: reason,
+      },
+    });
+    procUtils.killProcessGroup(task.execution.pid);
+    await omnish.supervisorAlert(task, reason);
+  }
+}
+
 async function checkProgressHeartbeats() {
   const cfg = loadConfig();
   if (!cfg.omnish?.enabled) return;
@@ -61,7 +110,7 @@ async function checkFailedCampaignDays() {
     if (!def.getFailedDays) continue;
     for (const { day, reason } of def.getFailedDays({ ws })) {
       const tasks = store.listTasks({ workspaceId: ws.id });
-      const task = tasks.find(t => String(registry.resolveDay(t)) === String(day));
+      const task = tasks.find((t) => String(registry.resolveDay(t)) === String(day));
       if (task && task.status === 'scheduled') {
         await omnish.supervisorAlert(task, `Campaign day ${day} failed earlier: ${reason || 'unknown'}. Ready to retry from board.`);
       }
@@ -75,6 +124,8 @@ function startSupervisor() {
   if (!settings.supervisorEnabled) return null;
 
   const ms = cfg.worker?.supervisorIntervalMs || 300000;
+  const hangMs = cfg.worker?.hangCheckIntervalMs || 30000;
+
   const run = async () => {
     try {
       await checkRunningTasks();
@@ -84,8 +135,23 @@ function startSupervisor() {
       console.error('[supervisor]', e.message);
     }
   };
+  const runHang = async () => {
+    try {
+      await checkHangsAndTimeouts();
+    } catch (e) {
+      console.error('[supervisor:hang]', e.message);
+    }
+  };
+
   run();
-  return setInterval(run, ms);
+  runHang();
+  const a = setInterval(run, ms);
+  const b = setInterval(runHang, hangMs);
+  return { close() { clearInterval(a); clearInterval(b); } };
 }
 
-module.exports = { startSupervisor, checkRunningTasks };
+module.exports = {
+  startSupervisor,
+  checkRunningTasks,
+  checkHangsAndTimeouts,
+};

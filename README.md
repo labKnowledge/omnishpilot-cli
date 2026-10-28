@@ -94,6 +94,8 @@ omnishpilot watch                # live dashboard
 omnishpilot watch <job-id>       # follow a job log
 omnishpilot watch --log          # follow daemon log
 omnishpilot add "research competitor pricing into a one-pager"
+# → agent-task, scheduled once at now+5m (deterministic; CLI does not LLM-interpret)
+omnishpilot add --workspace ~/proj --now "fix the auth redirect"
 omnishpilot dashboard
 omnishpilot stop
 ```
@@ -138,12 +140,13 @@ Config (`sandbox` in `omnishpilot.config.json`):
 | Unattended flags (no Approve-on-every-tool) | **have** |
 | OS sandbox around those runs | **have** (Linux bwrap) |
 | Schedule + watch + supervisor heartbeat | **have** |
-| Omnish notify / file delivery | **have** |
-| Agent failover + rate-limit cooldown | **have** |
-| Acceptance gates (tests/artifacts vs clicks) | planned |
-| Git worktree isolation per run | planned |
-| Verifier agent before ship | planned |
-| Webhook triggers (GitHub/Linear) | planned |
+| Omnish notify / morning pack delivery | **have** |
+| Agent failover + resume-at-reset | **have** |
+| Acceptance gates (artifacts / test command) | **have** |
+| Git worktree isolation per run | **have** |
+| Verifier agent before ship | **have** |
+| Hang / timeout detector | **have** |
+| Webhook triggers (GitHub/Linear/generic) | **have** |
 
 See `omnishpilot capabilities` and [`docs/capabilities.md`](./docs/capabilities.md).
 
@@ -195,15 +198,24 @@ omnishpilot-cli/
 
 ## Publish (maintainers)
 
+Versioning (not classic “+1 / roll at 9”):
+
+- Each of `MAJOR.MINOR.PATCH` counts **0–99**, then carries (`0.0.99` → `0.1.0`; `0.0.9` → `0.0.10`).
+- Normal fix/feature: **+1**.
+- **Major upgrade / large change: +5** on the segment you advance.
+- Keep `package.json`, git tag `vX.Y.Z`, and npm identical.
+
 ```bash
 cd omnishpilot-cli
-npm run check
-npm run sync
-npm version patch   # or minor / 0.6.x
-npm publish         # public package `omnishpilot` on npmjs.com
+npm run check && npm run sync
+# set package.json to the next number under the rules above, then:
+git commit -am "release: vX.Y.Z"
+git tag -a vX.Y.Z -m "omnishpilot X.Y.Z"
+git push origin main --tags
+npm publish --access public --otp=YOUR_CODE
 ```
 
-Requires npm auth with publish rights to `omnishpilot`.
+Requires npm auth with publish rights to `omnishpilot`. See `.cursor/rules/versioning.mdc`.
 
 ---
 

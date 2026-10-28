@@ -17,7 +17,8 @@ const DEFAULT_SETTINGS = {
   supervisorEnabled: true,
   blockedWhenBusy: true,
   deliveryOnComplete: false,
-  deliveryMode: 'summary',
+  deliveryMode: 'pack',
+  morningPack: true,
   deliveryPeer: '',
   publicUrl: '',
 };
@@ -90,6 +91,7 @@ function createTask(spec) {
     schedule: spec.schedule || { type: 'manual' },
     instructions: spec.instructions || {},
     inputs: spec.inputs || {},
+    acceptance: spec.acceptance || null,
     outputs: spec.outputs || [],
     execution: {
       attempts: 0,

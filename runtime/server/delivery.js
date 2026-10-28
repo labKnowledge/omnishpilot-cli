@@ -1,12 +1,15 @@
+'use strict';
+
 const fs = require('fs');
 const path = require('path');
 const { loadConfig } = require('./config');
 const omnish = require('./omnish');
+const acceptance = require('./acceptance');
 
-const PREFERRED_FILES = ['video.mp4', 'thumbnail.png', 'post-draft.txt', 'result.md', 'socialPost'];
+const PREFERRED_FILES = ['video.mp4', 'thumbnail.png', 'post-draft.txt', 'result.md', 'socialPost', 'verifier-result.md'];
 
 function existingFiles(artifacts = []) {
-  return artifacts.filter(a => {
+  return artifacts.filter((a) => {
     if (!a.path || a.name === 'output-dir') return false;
     try {
       return fs.existsSync(a.path) && fs.statSync(a.path).isFile();
@@ -29,7 +32,7 @@ function buildSummary(task) {
   if (task.instructions?.socialPost?.trim()) {
     parts.push(task.instructions.socialPost.trim());
   } else {
-    const result = task.execution?.artifacts?.find(a => a.name === 'result.md');
+    const result = task.execution?.artifacts?.find((a) => a.name === 'result.md');
     if (result?.path && fs.existsSync(result.path)) {
       parts.push(fs.readFileSync(result.path, 'utf8').trim().slice(0, 800));
     }
@@ -42,12 +45,76 @@ function publicTaskUrl(task, settings) {
   return `${base.replace(/\/$/, '')}/?task=${task.id}`;
 }
 
-async function deliverTaskResult(task, settings) {
-  if (!settings?.deliveryOnComplete) return { skipped: true };
+/** Morning / decision pack: gate + artifacts + optional diff — wake to a verdict, not a log wall. */
+function buildMorningPack(task, settings, extra = {}) {
+  const lines = [];
+  lines.push(`${task.title} — ready to review`);
 
-  const mode = settings.deliveryMode || 'message';
-  const peer = settings.deliveryPeer || loadConfig().omnish?.peer || '*';
-  const title = `Delivered: ${task.title}`;
+  const acc = extra.acceptanceResult || (task.execution?.acceptance
+    ? { ok: task.execution.acceptance.ok, softPass: task.execution.acceptance.softPass, failures: task.execution.acceptance.failures || [], skipped: false, profile: null }
+    : null);
+  if (acc && !acc.skipped) {
+    lines.push(`Gate: ${acceptance.formatAcceptanceReport(acc)}`);
+  } else if (task.execution?.acceptance?.report) {
+    lines.push(`Gate: ${task.execution.acceptance.report}`);
+  }
+
+  const ver = extra.verifierResult || task.execution?.verifier;
+  if (ver && !ver.skipped) {
+    lines.push(`Verifier: ${ver.verdict || (ver.ok ? 'PASS' : 'FAIL')}${ver.detail && !ver.ok ? ` — ${ver.detail}` : ''}`);
+  }
+
+  const files = sortArtifacts(existingFiles(task.execution?.artifacts || [])).slice(0, 8);
+  if (files.length) {
+    lines.push(`Artifacts (${files.length}): ${files.map((f) => f.name).join(', ')}`);
+  }
+
+  const changed = extra.changedFiles || [];
+  if (changed.length) {
+    lines.push(`Changed (${changed.length}): ${changed.slice(0, 12).join(', ')}${changed.length > 12 ? '…' : ''}`);
+  } else if (extra.diffStat) {
+    lines.push(`Diff: ${String(extra.diffStat).split('\n').slice(-3).join(' | ').slice(0, 200)}`);
+  }
+
+  if (task.execution?.worktree?.path) {
+    lines.push(`Worktree: ${task.execution.worktree.path}`);
+  }
+
+  const url = publicTaskUrl(task, settings || {});
+  lines.push(`Open: ${url}`);
+
+  // Prefer a short result.md excerpt when present
+  const result = files.find((f) => f.name === 'result.md');
+  if (result?.path && fs.existsSync(result.path)) {
+    const excerpt = fs.readFileSync(result.path, 'utf8').trim().replace(/\s+/g, ' ').slice(0, 280);
+    if (excerpt) lines.push(`Summary: ${excerpt}`);
+  }
+
+  return lines.join('\n').slice(0, 900);
+}
+
+async function deliverTaskResult(task, settings, packExtra = {}) {
+  const cfg = loadConfig();
+  const usePack = settings?.morningPack !== false && cfg.delivery?.morningPack !== false;
+  const mode = settings.deliveryMode || (usePack ? 'pack' : 'message');
+  const peer = settings.deliveryPeer || cfg.omnish?.peer || '*';
+  const title = usePack ? `Pack: ${task.title}` : `Delivered: ${task.title}`;
+
+  // Pack is the default high-signal delivery for autonomy jobs.
+  if (mode === 'pack' || (usePack && settings?.deliveryOnComplete !== false && mode === 'summary')) {
+    const body = buildMorningPack(task, settings, packExtra);
+    // Also attach top files when deliveryOnComplete + files preferred
+    if (settings.deliveryMode === 'files') {
+      const files = sortArtifacts(existingFiles(task.execution?.artifacts)).slice(0, 5);
+      if (files.length) {
+        await omnish.notify(title, body, peer);
+        return omnish.sendFiles(peer, files.map((f) => f.path), body.slice(0, 160));
+      }
+    }
+    return omnish.notify(title, body, peer);
+  }
+
+  if (!settings?.deliveryOnComplete && !usePack) return { skipped: true };
 
   if (mode === 'files') {
     const files = sortArtifacts(existingFiles(task.execution?.artifacts)).slice(0, 5);
@@ -56,7 +123,7 @@ async function deliverTaskResult(task, settings) {
     }
     return omnish.sendFiles(
       peer,
-      files.map(f => f.path),
+      files.map((f) => f.path),
       buildSummary(task).slice(0, 200),
     );
   }
@@ -70,7 +137,6 @@ async function deliverTaskResult(task, settings) {
     return omnish.notify(title, buildSummary(task), peer);
   }
 
-  // message
   const count = existingFiles(task.execution?.artifacts).length;
   const body = count
     ? `Finished with ${count} file(s). Open OmnishPilot to review outputs.`
@@ -79,7 +145,7 @@ async function deliverTaskResult(task, settings) {
 }
 
 async function sendTestDelivery(settings) {
-  const mode = settings?.deliveryMode || 'message';
+  const mode = settings?.deliveryMode || 'pack';
   const peer = settings?.deliveryPeer || loadConfig().omnish?.peer || '*';
   if (mode === 'files') {
     return omnish.notify(
@@ -96,11 +162,16 @@ async function sendTestDelivery(settings) {
       peer,
     );
   }
+  if (mode === 'pack' || mode === 'summary') {
+    return omnish.notify(
+      'OmnishPilot pack test',
+      'Morning pack delivery is enabled.\nGate: PASS — result.md\nArtifacts (1): result.md\nOpen: dashboard/?task=example',
+      peer,
+    );
+  }
   return omnish.notify(
     'OmnishPilot delivery test',
-    mode === 'summary'
-      ? 'Summary delivery is enabled.\n\nExample: Your job finished.\n\nSocial copy or result text appears here.'
-      : 'Message delivery is enabled. You will get a short notice when jobs finish.',
+    'Message delivery is enabled. You will get a short notice when jobs finish.',
     peer,
   );
 }
@@ -109,5 +180,6 @@ module.exports = {
   deliverTaskResult,
   sendTestDelivery,
   buildSummary,
+  buildMorningPack,
   existingFiles,
 };
