@@ -3,86 +3,107 @@
 <head>
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"/>
-  <meta name="theme-color" content="#f4f6f8"/>
+  <meta name="theme-color" content="#0B57D0"/>
   <meta name="description" content="OmnishPilot schedules agent jobs, tracks runs, and notifies you when work finishes."/>
   <title>OmnishPilot</title>
   <link rel="icon" href="/favicon.svg" type="image/svg+xml"/>
   <link rel="icon" href="/favicon.ico" sizes="32x32"/>
+  <link rel="icon" href="/favicon-16x16.png" type="image/png" sizes="16x16"/>
+  <link rel="icon" href="/favicon-32x32.png" type="image/png" sizes="32x32"/>
   <link rel="apple-touch-icon" href="/apple-touch-icon.png" sizes="180x180"/>
   <link rel="manifest" href="/site.webmanifest"/>
   <link rel="preconnect" href="https://fonts.googleapis.com"/>
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
-  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&family=Roboto+Mono:wght@400;500&display=swap" rel="stylesheet"/>
   <link rel="stylesheet" href="/styles.css"/>
 </head>
 <body>
-  <div class="app-shell" id="app-shell">
-    <span class="bracket tl" aria-hidden="true" hidden></span>
-    <span class="bracket tr" aria-hidden="true" hidden></span>
-    <span class="bracket bl" aria-hidden="true" hidden></span>
-    <span class="bracket br" aria-hidden="true" hidden></span>
-
-    <header class="hud-strip" role="banner">
-      <div class="hud-strip__brand">
-        <span class="brand-mark-frame" aria-hidden="true">
-          <img class="brand-mark" src="/logo.svg" alt="" width="30" height="30"/>
-        </span>
-        <div class="brand-text">
-          <p class="brand-code">OmnishPilot</p>
-          <h1 class="brand-title">Jobs</h1>
+  <div class="app-shell">
+    <aside class="sidebar" aria-label="Primary navigation">
+      <div class="sidebar__brand">
+        <img class="brand-mark" src="/logo.svg" alt="" aria-hidden="true" width="40" height="40"/>
+        <div>
+          <div class="brand-title">OmnishPilot</div>
+          <p class="brand-sub">Agent job control</p>
         </div>
       </div>
-      <div class="hud-strip__meta">
-        <span class="chip" id="chip-run" hidden>Idle</span>
-        <button type="button" class="btn btn-filled sm strip-command" id="btn-console-toggle" aria-expanded="true" aria-controls="command-theater">New job</button>
-      </div>
-      <div class="hud-strip__page">
-        <p class="page-code" id="page-code">Overview</p>
-        <p class="page-title" id="page-title">Jobs</p>
-      </div>
-    </header>
+      <nav class="sidebar-nav">
+        <button type="button" class="sidebar-nav__item active" data-tab="home">
+          <span class="nav-icon" aria-hidden="true">⌂</span>
+          <span>Overview</span>
+        </button>
+        <button type="button" class="sidebar-nav__item" data-tab="calendar">
+          <span class="nav-icon" aria-hidden="true">📅</span>
+          <span>Calendar</span>
+        </button>
+        <button type="button" class="sidebar-nav__item" data-tab="timeline">
+          <span class="nav-icon" aria-hidden="true">▦</span>
+          <span>Timeline</span>
+        </button>
+        <button type="button" class="sidebar-nav__item" data-tab="compose">
+          <span class="nav-icon" aria-hidden="true">✎</span>
+          <span>Compose</span>
+        </button>
+        <button type="button" class="sidebar-nav__item" data-tab="settings">
+          <span class="nav-icon" aria-hidden="true">⚙</span>
+          <span>Settings</span>
+        </button>
+      </nav>
+      <button type="button" class="btn btn-filled sidebar__cta" id="btn-add-work-sidebar">New job</button>
+    </aside>
 
-    <div class="shell-body" id="shell-body">
-      <div class="command-theater is-docked" id="command-theater" role="region" aria-labelledby="command-theater-title" aria-hidden="false">
-        <button type="button" class="command-theater__veil" id="command-theater-veil" tabindex="-1" aria-label="Close" hidden></button>
-        <div class="command-theater__stage">
-          <div class="command-theater__iris" aria-hidden="true" hidden></div>
-          <div class="command-theater__scan" aria-hidden="true" hidden></div>
-          <p class="command-theater__code"><span id="chip-clock">00:00:00</span></p>
-          <h2 class="command-theater__title" id="command-theater-title">New job</h2>
-          <p class="command-theater__lead">Describe the work in plain language</p>
-          <form class="command-console" id="command-console" action="#" autocomplete="off">
-            <span class="command-console__prompt" aria-hidden="true">›</span>
-            <input type="text" id="quick-add-input" class="command-console__input" name="command" placeholder="e.g. research competitors every Monday 9am" autocomplete="off" enterkeyhint="go" autocapitalize="sentences"/>
-            <button type="button" class="icon-btn" id="quick-add-folder-toggle" title="Attach folder" aria-label="Attach folder">📁</button>
-            <button type="submit" class="btn btn-filled" id="quick-add-go">Add</button>
-          </form>
-          <div class="quick-add-folder-row hidden" id="quick-add-folder-row"></div>
-          <div id="quick-add-result"></div>
-          <div class="command-theater__foot">
-            <button type="button" class="btn btn-text sm" id="btn-command-wizard">Guided setup</button>
-            <span class="command-theater__hint" id="command-theater-hint">Enter to add</span>
-            <button type="button" class="btn btn-outlined sm" id="btn-console-stow" hidden>Close</button>
+    <div class="content-column">
+      <header class="top-app-bar" role="banner">
+        <div class="top-app-bar__row">
+          <div class="top-app-bar__brand top-app-bar__brand--mobile">
+            <img class="brand-mark" src="/logo.svg" alt="" aria-hidden="true" width="32" height="32"/>
+            <div>
+              <p class="brand-title">OmnishPilot</p>
+            </div>
           </div>
+          <h1 class="page-title" id="page-title">Overview</h1>
+          <button type="button" class="btn btn-filled top-app-bar__action" id="btn-add-work">New job</button>
         </div>
-      </div>
+        <div class="quick-add-bar">
+          <span class="quick-add-bar__icon" aria-hidden="true">✨</span>
+          <input type="text" id="quick-add-input" class="quick-add-bar__input" placeholder="What do you want done, and when? e.g. &quot;Every Monday 9am, research my top competitors and email a summary&quot;" autocomplete="off"/>
+          <button type="button" class="icon-btn" id="quick-add-folder-toggle" title="Attach a folder (optional)" aria-label="Attach a folder">📁</button>
+          <button type="button" class="btn btn-filled sm quick-add-bar__go" id="quick-add-go">Go</button>
+        </div>
+        <div class="quick-add-folder-row hidden" id="quick-add-folder-row"></div>
+        <div id="quick-add-result"></div>
+      </header>
 
       <main id="main" class="main-content" role="main"></main>
     </div>
 
-    <nav class="dock" aria-label="Primary navigation">
-      <button type="button" class="dock__item active" data-tab="home"><span class="dock__code">1</span><span>Jobs</span></button>
-      <button type="button" class="dock__item" data-tab="calendar"><span class="dock__code">2</span><span>Calendar</span></button>
-      <button type="button" class="dock__item" data-tab="timeline"><span class="dock__code">3</span><span>Timeline</span></button>
-      <button type="button" class="dock__item" data-tab="compose"><span class="dock__code">4</span><span>Compose</span></button>
-      <button type="button" class="dock__item" data-tab="settings"><span class="dock__code">5</span><span>Settings</span></button>
-      <button type="button" class="btn btn-filled dock__arm" id="btn-add-work">New job</button>
+    <nav class="bottom-nav" aria-label="Primary navigation">
+      <button type="button" class="bottom-nav__item active" data-tab="home">
+        <span class="bottom-nav__icon" aria-hidden="true">⌂</span>
+        <span class="bottom-nav__label">Overview</span>
+      </button>
+      <button type="button" class="bottom-nav__item" data-tab="calendar">
+        <span class="bottom-nav__icon" aria-hidden="true">📅</span>
+        <span class="bottom-nav__label">Calendar</span>
+      </button>
+      <button type="button" class="bottom-nav__item" data-tab="timeline">
+        <span class="bottom-nav__icon" aria-hidden="true">▦</span>
+        <span class="bottom-nav__label">Timeline</span>
+      </button>
+      <button type="button" class="bottom-nav__item" data-tab="compose">
+        <span class="bottom-nav__icon" aria-hidden="true">✎</span>
+        <span class="bottom-nav__label">Compose</span>
+      </button>
+      <button type="button" class="bottom-nav__item" data-tab="settings">
+        <span class="bottom-nav__icon" aria-hidden="true">⚙</span>
+        <span class="bottom-nav__label">Settings</span>
+      </button>
     </nav>
-  </div>
 
-  <!-- Hidden aliases so existing JS selectors keep working -->
-  <button type="button" class="hidden" id="btn-add-work-sidebar" aria-hidden="true"></button>
-  <button type="button" class="hidden" id="fab-add-work" aria-hidden="true"></button>
+    <button type="button" class="fab" id="fab-add-work" aria-label="Create new job">
+      <span aria-hidden="true">+</span>
+    </button>
+  </div>
 
   <div class="modal hidden" id="wizard-modal" role="dialog" aria-modal="true" aria-labelledby="wizard-title">
     <div class="modal-backdrop" data-close></div>
@@ -221,7 +242,6 @@
 
   <div id="toast-root" class="toast-root" aria-live="polite"></div>
   <nav id="cal-context-menu" class="cal-context-menu hidden" role="menu" aria-label="Timeline actions"></nav>
-  <script src="/app.js" defer></script>
+  <script src="/app.js"></script>
 </body>
 </html>
-

@@ -23,83 +23,7 @@ const S = {
   selectedTask: null,
   instrTab: null,
   poll: null,
-  ui: {
-    consoleOpen: false,
-    /** null = auto (open when live/fail); boolean = user override */
-    instrumentsOpen: null,
-  },
 };
-
-/** Command modes: docked on Deck (always ready), overlay elsewhere, or stowed. */
-function syncCommandTheater() {
-  const theater = document.getElementById('command-theater');
-  const shell = document.getElementById('app-shell');
-  const btn = document.getElementById('btn-console-toggle');
-  const veil = document.getElementById('command-theater-veil');
-  const stow = document.getElementById('btn-console-stow');
-  const hint = document.getElementById('command-theater-hint');
-  const onHome = S.tab === 'home';
-  const overlay = !onHome && S.ui.consoleOpen;
-  const visible = onHome || S.ui.consoleOpen;
-
-  theater?.classList.toggle('is-docked', onHome);
-  theater?.classList.toggle('is-overlay', overlay);
-  theater?.classList.toggle('is-stowed', !visible);
-  theater?.setAttribute('aria-hidden', visible ? 'false' : 'true');
-  theater?.setAttribute('role', overlay ? 'dialog' : 'region');
-  if (overlay) theater?.setAttribute('aria-modal', 'true');
-  else theater?.removeAttribute('aria-modal');
-
-  shell?.classList.toggle('is-command-focus', overlay);
-  shell?.classList.toggle('is-deck-command', onHome);
-  document.body.classList.toggle('is-command-focus', overlay);
-
-  btn?.setAttribute('aria-expanded', visible ? 'true' : 'false');
-  btn?.classList.toggle('is-active', visible);
-  if (btn) btn.hidden = onHome; // Deck already is command
-
-  if (veil) veil.hidden = !overlay;
-  if (stow) stow.hidden = !overlay;
-  if (hint) hint.textContent = overlay ? 'Enter · engage · Esc · close' : 'Enter · engage';
-
-  if (visible) {
-    requestAnimationFrame(() => {
-      const input = document.getElementById('quick-add-input');
-      if (input && document.activeElement !== input) input.focus({ preventScroll: true });
-    });
-  } else {
-    document.getElementById('quick-add-folder-row')?.classList.add('hidden');
-    const result = document.getElementById('quick-add-result');
-    if (result && !result.querySelector('.quick-add-preview--loading')) result.innerHTML = '';
-  }
-}
-
-function setConsoleOpen(open) {
-  if (S.tab === 'home') {
-    // Deck is always the command surface — just focus
-    S.ui.consoleOpen = true;
-    syncCommandTheater();
-    return;
-  }
-  S.ui.consoleOpen = !!open;
-  syncCommandTheater();
-}
-
-function goToCommand() {
-  if (S.tab !== 'home') {
-    setActiveTab('home');
-    return; // render → sync focuses input
-  }
-  S.ui.consoleOpen = true;
-  syncCommandTheater();
-}
-
-function instrumentsOpenFor(d) {
-  if (S.ui.instrumentsOpen != null) return S.ui.instrumentsOpen;
-  const live = (d?.stats?.running || d?.liveRuns?.length || 0) > 0;
-  const fail = (d?.failed?.length || 0) > 0;
-  return live || fail;
-}
 
 async function api(path, opts = {}) {
   const r = await fetch(path, {
@@ -365,286 +289,49 @@ function renderCampaignBanners() {
   return (S.dashboard?.campaigns || []).map(renderCampaignBanner).join('');
 }
 
-function updateRunChip(d) {
-  const chip = document.getElementById('chip-run');
-  if (!chip) return;
-  const n = d?.stats?.running || d?.liveRuns?.length || 0;
-  const failN = d?.failed?.length || 0;
-  if (n > 0) {
-    chip.hidden = false;
-    chip.textContent = `${n} LIVE`;
-    chip.className = 'chip live';
-  } else if (failN > 0) {
-    chip.hidden = false;
-    chip.textContent = `${failN} FAIL`;
-    chip.className = 'chip';
-    chip.style.color = 'var(--fail)';
-    chip.style.borderColor = 'rgba(255,51,85,.45)';
-  } else {
-    chip.hidden = true;
-    chip.textContent = 'IDLE';
-    chip.className = 'chip';
-    chip.style.color = '';
-    chip.style.borderColor = '';
-  }
-}
-
-function telemetryTracks(d) {
-  const tracks = [];
-  for (const t of (d.running || []).slice(0, 4)) {
-    tracks.push({ tag: 'LIVE', kind: 'hot', title: t.title, meta: runModeLabel(t.runMode), id: t.id });
-  }
-  for (const t of (d.failed || []).slice(0, 3)) {
-    tracks.push({ tag: 'FAIL', kind: 'fail', title: t.title, meta: 'Needs attention', id: t.id });
-  }
-  for (const t of (d.upcoming || []).slice(0, 6)) {
-    tracks.push({ tag: 'NEXT', kind: 'ok', title: t.title, meta: scheduleLabelForTask(t), id: t.id });
-  }
-  for (const t of (d.completed || []).slice(0, 4)) {
-    tracks.push({ tag: 'DONE', kind: 'done', title: t.title, meta: t.summary || 'Finished', id: t.id });
-  }
-  return tracks.slice(0, 10);
-}
-
-function radarTelemetryHtml(d) {
-  let tracks = telemetryTracks(d);
-  const standby = !tracks.length;
-  if (standby) {
-    tracks = [
-      { tag: 'RDY', kind: 'ok', title: 'Command ready', meta: 'Awaiting sortie' },
-      { tag: 'SYS', kind: 'ok', title: 'Plane online', meta: 'Standby sweep' },
-      { tag: 'LNK', kind: 'ok', title: 'Notify link', meta: 'Omnish channel' },
-      { tag: 'CLK', kind: 'ok', title: 'Scheduler', meta: 'Armed' },
-    ];
-  }
-  const n = tracks.length;
-  const pts = tracks.map((t, i) => {
-    const angle = (i / n) * Math.PI * 2 - Math.PI / 2 + 0.15;
-    const dist = 26 + (i % 3) * 10;
-    return {
-      ...t,
-      x: 50 + Math.cos(angle) * dist,
-      y: 50 + Math.sin(angle) * dist,
-      lx: 50 + Math.cos(angle) * Math.min(dist + 14, 46),
-      ly: 50 + Math.sin(angle) * Math.min(dist + 14, 46),
-    };
-  });
-
-  const spokes = pts.map((p, i) =>
-    `<line class="radar__spoke radar__spoke--${p.kind}" x1="50" y1="50" x2="${p.x.toFixed(2)}" y2="${p.y.toFixed(2)}" style="animation-delay:${(i * 0.08).toFixed(2)}s"/>`
-  ).join('');
-  const links = pts.map((p, i) => {
-    const q = pts[(i + 1) % pts.length];
-    return `<line class="radar__link radar__link--${p.kind}" x1="${p.x.toFixed(2)}" y1="${p.y.toFixed(2)}" x2="${q.x.toFixed(2)}" y2="${q.y.toFixed(2)}"/>`;
-  }).join('');
-  const nodes = pts.map(p =>
-    `<circle class="radar__node radar__node--${p.kind}" cx="${p.x.toFixed(2)}" cy="${p.y.toFixed(2)}" r="1.6"/>`
-  ).join('');
-  const blips = pts.map(p => {
-    const cls = p.kind === 'hot' ? 'hot' : p.kind === 'fail' ? 'fail' : p.kind === 'done' ? 'done' : '';
-    const open = p.id ? ` data-open-task="${p.id}"` : '';
-    return `<button type="button" class="radar__blip ${cls}" style="left:${p.x.toFixed(1)}%;top:${p.y.toFixed(1)}%" title="${esc(p.tag + ' · ' + p.title)}"${open}></button>`;
-  }).join('');
-  const labels = pts.map(p => {
-    const short = (p.title || '').length > 22 ? p.title.slice(0, 20) + '…' : p.title;
-    const open = p.id ? ` data-open-task="${p.id}"` : '';
-    return `<button type="button" class="radar__label radar__label--${p.kind}" style="left:${p.lx.toFixed(1)}%;top:${p.ly.toFixed(1)}%"${open}>
-      <span class="radar__tag">${esc(p.tag)}</span>
-      <span class="radar__name">${esc(short)}</span>
-    </button>`;
-  }).join('');
-
-  return `
-    <div class="radar ${standby ? 'is-standby' : ''}" role="img" aria-label="Telemetry radar">
-      <svg class="radar__svg" viewBox="0 0 100 100" aria-hidden="true">
-        <circle class="radar__ring" cx="50" cy="50" r="42" fill="none"/>
-        <circle class="radar__ring" cx="50" cy="50" r="28" fill="none"/>
-        <circle class="radar__ring" cx="50" cy="50" r="14" fill="none"/>
-        ${links}
-        ${spokes}
-        ${nodes}
-        <circle class="radar__hub" cx="50" cy="50" r="2.2"/>
-      </svg>
-      <div class="radar__sweep" aria-hidden="true"></div>
-      ${blips}
-      ${labels}
-    </div>`;
-}
-
-function telemetryFeedHtml(d) {
-  const lines = telemetryTracks(d);
-  if (!lines.length) return '<p class="empty">No telemetry yet — command a sortie</p>';
-  return lines.map(l => `
-    <div class="telemetry-line"${l.id ? ` data-open-task="${l.id}"` : ''}>
-      <time>${esc(l.tag)}</time>
-      <div><strong>${esc(l.title)}</strong><span>${esc(l.meta)}</span></div>
-    </div>`).join('');
-}
-
-function queueRailHtml(d) {
-  const items = [
-    ...(d.failed || []).map(t => ({ ...t, mark: 'FAIL' })),
-    ...(d.upcoming || []).slice(0, 10).map(t => ({ ...t, mark: 'QUE' })),
-    ...(d.drafts || []).slice(0, 4).map(t => ({ ...t, mark: 'DRF' })),
-  ].slice(0, 14);
-  if (!items.length) {
-    return '<p class="empty">Queue empty. Arm a job to begin.</p>';
-  }
-  return items.map(t => `
-    <div class="queue-item" data-task="${t.id}">
-      <div style="min-width:0">
-        <div class="queue-item__title">${esc(t.title)}</div>
-        <div class="queue-item__meta">${esc(scheduleLabelForTask(t))}</div>
-      </div>
-      <span class="badge ${t.status || 'scheduled'}">${esc(t.mark || t.status)}</span>
-    </div>`).join('');
-}
-
-function deckStatusLine(d) {
-  const failN = d.failed?.length || 0;
-  const runN = d.stats.running || d.liveRuns?.length || 0;
-  const next = d.upcoming?.[0];
-  if (failN) return `${failN} need attention`;
-  if (runN) return `${runN} live`;
-  if (next) return `Next · ${next.title}`;
-  return 'Standby';
-}
-
-/** Circular dials — fui-ref primary gauge language */
-function dialHtml(value, label, kind = 'cyan') {
-  const n = Math.max(0, Number(value) || 0);
-  const pct = Math.min(100, n <= 12 ? Math.round((n / 12) * 100) : 100);
-  return `
-    <div class="dial dial--${kind}" style="--dial:${pct}" title="${esc(label)}: ${n}">
-      <div class="dial__ring" aria-hidden="true"></div>
-      <div class="dial__core">
-        <strong>${n}</strong>
-        <span>${esc(label)}</span>
-      </div>
-    </div>`;
-}
-
-/** Activity waveform strip under the reticle (ref top-center viz) */
-function waveStripHtml(d) {
-  const run = d.stats.running || d.liveRuns?.length || 0;
-  const fail = d.stats.failed || d.failed?.length || 0;
-  const sched = d.stats.scheduled || 0;
-  const done = d.stats.completed || 0;
-  const seed = [run, sched, done, fail, run + 1, sched, done, fail + run, sched + 1, done, run, sched];
-  const max = Math.max(1, ...seed);
-  const bars = seed.map((v, i) => {
-    const h = Math.max(12, Math.round((v / max) * 100));
-    const tone = fail && i % 4 === 3 ? 'fail' : run && i % 3 === 0 ? 'hot' : 'cyan';
-    return `<span class="wave-strip__bar wave-strip__bar--${tone}" style="--h:${h}%"></span>`;
-  }).join('');
-  return `<div class="wave-strip" aria-hidden="true">${bars}</div>`;
-}
-
-/** Bottom segmented system bar — fui-ref "P" progress language */
-function sysBezelHtml(d) {
-  const run = d.stats.running || d.liveRuns?.length || 0;
-  const fail = d.stats.failed || d.failed?.length || 0;
-  const sched = d.stats.scheduled || 0;
-  const done = d.stats.completed || 0;
-  const total = Math.max(1, run + fail + sched + done);
-  const segs = [];
-  const push = (n, cls) => {
-    const count = Math.max(0, Math.round((n / total) * 24));
-    for (let i = 0; i < count; i++) segs.push(`<i class="sys-bezel__seg ${cls}"></i>`);
-  };
-  push(done, 'is-ok');
-  push(sched, 'is-idle');
-  push(run, 'is-hot');
-  push(fail, 'is-fail');
-  while (segs.length < 24) segs.push('<i class="sys-bezel__seg"></i>');
-  return `
-    <div class="sys-bezel" role="img" aria-label="Fleet load ${run} live, ${fail} fail, ${sched} scheduled">
-      <span class="sys-bezel__mark">P</span>
-      <div class="sys-bezel__track">${segs.slice(0, 24).join('')}</div>
-      <span class="sys-bezel__readout">${esc(deckStatusLine(d))}</span>
-    </div>`;
-}
-
 function renderHome() {
   const d = S.dashboard;
-  if (!d) return '<p class="empty deck-secondary">SYNCING…</p>';
-  updateRunChip(d);
+  if (!d) return '<p class="empty">Loading…</p>';
   const running = d.running[0] || (d.liveRuns?.[0] ? { id: d.liveRuns[0].taskId, title: d.liveRuns[0].title, runMode: 'auto', execution: { attempts: 1 }, _live: true } : null);
-  const camps = renderCampaignBanners();
-  const failFocus = (d.failed || [])[0];
-  const runN = d.stats.running || d.liveRuns?.length || 0;
-  const failN = d.stats.failed || d.failed?.length || 0;
-  const schedN = d.stats.scheduled || 0;
-  const doneN = d.stats.completed || 0;
-  const lock = running ? `
-    <div class="lock-card start-lock">
-      <p class="deck-label">Target lock</p>
-      <h3>Live · ${esc(running.title)}</h3>
-      <div class="status-actions">
-        ${running.id ? `<button class="btn btn-outlined sm" data-open-task="${running.id}">Open job</button>` : ''}
-      </div>
-    </div>` : failFocus ? `
-    <div class="lock-card start-lock is-fail">
-      <p class="deck-label">Alert</p>
-      <h3>Failed · ${esc(failFocus.title)}</h3>
-      <div class="status-actions">
-        <button class="btn btn-outlined sm" data-open-task="${failFocus.id}">Open job</button>
-      </div>
-    </div>` : `
-    <div class="lock-card idle">
-      <p class="deck-label">Target lock</p>
-      <h3>Standby</h3>
-      <p class="section-lead" style="margin:0">Arm a command to acquire.</p>
-    </div>`;
-
-  // Desktop cockpit: three-panel theater from fui-ref.jpg (queue · reticle · feed)
   return `
-    <div class="deck">
-      <aside class="deck__rail fui-panel">
-        <div class="fui-panel__corners" aria-hidden="true"></div>
-        <p class="deck-label">01 · Queue</p>
-        ${lock}
-        <div class="deck__rail-scroll">${queueRailHtml(d)}</div>
-      </aside>
-
-      <section class="deck__stage fui-panel" aria-label="Telemetry radar">
-        <div class="fui-panel__corners" aria-hidden="true"></div>
-        <div class="deck__stage-head">
-          <p class="deck-label">Scan · ${esc(deckStatusLine(d))}</p>
-          ${waveStripHtml(d)}
+    ${renderCampaignBanners()}
+    <div class="stats">
+      <div class="stat"><strong>${d.stats.completed}</strong><span>Finished</span></div>
+      <div class="stat"><strong>${d.stats.scheduled}</strong><span>Scheduled</span></div>
+      <div class="stat"><strong>${d.stats.drafts || 0}</strong><span>Drafts</span></div>
+      <div class="stat"><strong>${d.stats.running || d.liveRuns?.length || 0}</strong><span>Running</span></div>
+      <div class="stat"><strong>${d.stats.paused || 0}</strong><span>Paused</span></div>
+    </div>
+    ${running ? `
+      <div class="hero-card running">
+        <h3>Running: ${esc(running.title)}</h3>
+        <p class="hero-meta">${running._live ? 'Started by autopilot' : 'In progress'} · ${esc(runModeLabel(running.runMode))} · Attempt ${running.execution?.attempts || 1}</p>
+        <div class="status-actions">
+          ${running.id ? `<button class="btn btn-outlined" data-open-task="${running.id}">View progress</button>` : ''}
         </div>
-        <div class="reticle">
-          <span class="reticle__br tl" aria-hidden="true"></span>
-          <span class="reticle__br tr" aria-hidden="true"></span>
-          <span class="reticle__br bl" aria-hidden="true"></span>
-          <span class="reticle__br br" aria-hidden="true"></span>
-          <span class="reticle__cross" aria-hidden="true"></span>
-          <div class="radar-wrap">
-            ${radarTelemetryHtml(d)}
-          </div>
-          <div class="reticle__compass" aria-hidden="true">
-            <span>NW</span><span>N</span><span>NE</span>
-          </div>
+      </div>` : `
+      <div class="hero-card">
+        <h3>No jobs running</h3>
+        <p class="hero-meta">Create a job or start one from the queue. Omnish notifies you when a job starts and when it finishes.</p>
+        <div class="status-actions">
+          <button class="btn btn-filled" id="btn-add-inline">Create job</button>
         </div>
-        <div class="dial-row">
-          ${dialHtml(runN, 'Running', runN ? 'hot' : 'cyan')}
-          ${dialHtml(schedN, 'Queued', 'cyan')}
-          ${dialHtml(doneN, 'Done', 'ok')}
-          ${dialHtml(failN, 'Fail', failN ? 'fail' : 'cyan')}
-        </div>
-      </section>
-
-      <aside class="deck__side fui-panel">
-        <div class="fui-panel__corners" aria-hidden="true"></div>
-        <p class="deck-label">02 · Feed</p>
-        <div class="deck__side-scroll">${telemetryFeedHtml(d)}</div>
-        ${camps ? `<div class="deck-campaigns">${camps}</div>` : ''}
-      </aside>
-
-      <footer class="deck__foot">
-        ${sysBezelHtml(d)}
-      </footer>
-    </div>`;
+      </div>`}
+    ${(d.drafts || []).length ? `<section class="section"><h2>Drafts</h2><div class="task-grid">${d.drafts.map(t => taskCard(t, 'future')).join('')}</div></section>` : ''}
+    <section class="section">
+      <h2>Up next</h2>
+      <div class="task-grid">
+        ${d.upcoming.length ? d.upcoming.slice(0, 8).map(t => taskCard(t, 'future')).join('') : '<p class="empty">Nothing scheduled yet. Sync a workspace or create a job.</p>'}
+      </div>
+    </section>
+    <section class="section">
+      <h2>Recently finished</h2>
+      <div class="task-grid">
+        ${d.completed.length ? d.completed.map(t => taskCard(t, 'done')).join('') : '<p class="empty">Finished jobs show up here with outputs, posts, and reports.</p>'}
+      </div>
+    </section>
+    ${d.failed.length ? `<section class="section"><h2>Needs attention</h2><div class="task-grid">${d.failed.map(t => taskCard(t, 'fail')).join('')}</div></section>` : ''}
+    ${(d.paused || []).length ? `<section class="section"><h2>Paused</h2><div class="task-grid">${d.paused.map(t => taskCard(t, 'paused')).join('')}</div></section>` : ''}`;
 }
 
 function renderTimeline() {
@@ -673,27 +360,20 @@ function renderTimeline() {
 
   const missing = tl.stats?.missingJobs || 0;
   return `
-    <section class="page-theater">
-      <header class="page-theater__head page-theater__head--tight">
-        <div>
-          <p class="deck-label">03 · Timeline</p>
-          <h2 class="page-theater__title">${esc(tl.workspaceName || 'Campaign timeline')}</h2>
-          <p class="section-lead">${tl.stats?.withJobs || 0}/${tl.totalDays} days armed${missing ? ` · <span style="color:var(--accent-2)">${missing} not imported</span>` : ''}. Tap a day.</p>
-        </div>
-        <div class="page-theater__tools">
-          <button class="btn btn-filled sm" id="btn-import-jobs">Import jobs</button>
-        </div>
-      </header>
+    <div style="display:flex;justify-content:space-between;align-items:flex-end;flex-wrap:wrap;gap:8px">
+      ${renderWorkspaceSwitcher()}
+      <button class="btn btn-outlined" id="btn-new-campaign" style="margin-bottom:16px">New campaign</button>
+    </div>
+    <section class="section">
+      <h2>${esc(tl.workspaceName || 'Campaign timeline')}</h2>
+      <p class="section-lead">${tl.stats?.withJobs || 0} of ${tl.totalDays} days have jobs. Tap a day to open it. Teal days are finished.</p>
+      ${missing ? `<p class="section-lead" style="color:var(--md-sys-color-primary)">${missing} planned day(s) are not imported yet. Use Import jobs to add them.</p>` : ''}
       <div class="timeline-grid">${cells}</div>
-      <details class="fui-disclose">
-        <summary>More tools</summary>
-        <div class="fui-disclose__body status-actions">
-          ${renderWorkspaceSwitcher()}
-          <button class="btn btn-outlined sm" id="btn-new-campaign">New campaign</button>
-          <button class="btn btn-outlined sm" id="btn-sync">Sync all days</button>
-          <button class="btn btn-text sm" id="btn-add-inline2">Create single job</button>
-        </div>
-      </details>
+      <div class="status-actions" style="margin-top:16px">
+        <button class="btn btn-filled" id="btn-import-jobs">Import jobs</button>
+        <button class="btn btn-outlined" id="btn-sync">Sync all campaign days</button>
+        <button class="btn btn-text" id="btn-add-inline2">Create single job</button>
+      </div>
     </section>`;
 }
 
@@ -743,37 +423,26 @@ function composeCard(d) {
 }
 
 function renderCompose() {
-  if (!S.activeWorkspaceId) {
-    return `<section class="page-theater"><p class="deck-label">04 · Compose</p>${renderWorkspaceSwitcher()}<p class="empty">No workspace configured.</p></section>`;
-  }
-  if (!S.composerDays) {
-    return `<section class="page-theater"><p class="deck-label">04 · Compose</p>${renderWorkspaceSwitcher()}<p class="empty">Loading campaign plan…</p></section>`;
-  }
+  if (!S.activeWorkspaceId) return `${renderWorkspaceSwitcher()}<p class="empty">No workspace configured.</p>`;
+  if (!S.composerDays) return `${renderWorkspaceSwitcher()}<p class="empty">Loading campaign plan…</p>`;
   const ws = activeWorkspace();
   const cardsHtml = S.composerDays.map(composeCard).join('')
     || '<p class="empty">No days yet. Add one below, or import a plan from Timeline → Import jobs.</p>';
   return `
-    <section class="page-theater">
-      <header class="page-theater__head page-theater__head--tight">
-        <div>
-          <p class="deck-label">04 · Compose</p>
-          <h2 class="page-theater__title">${esc(ws?.name || 'Campaign')}</h2>
-          <p class="section-lead">${S.composerDays.length} day(s) · save writes the plan</p>
+    ${renderWorkspaceSwitcher()}
+    <section class="section">
+      <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
+        <h2>Compose — ${esc(ws?.name || 'Campaign')}</h2>
+        <div class="status-actions">
+          <button class="btn btn-text" id="compose-add-day">Add day</button>
+          <button class="btn btn-outlined" id="compose-save">Save all</button>
+          <button class="btn btn-filled" id="compose-save-sync">Save &amp; sync to board</button>
         </div>
-        <div class="page-theater__tools">
-          <button class="btn btn-filled sm" id="compose-save-sync">Save &amp; sync</button>
-        </div>
-      </header>
+      </div>
+      <p class="section-lead">Editing ${S.composerDays.length} day(s). Saving writes the campaign plan directly — nothing runs until you sync or the next scheduled run.
+        <button class="btn btn-text sm" id="compose-install-cron" style="margin-left:8px">Enable daily automation</button>
+      </p>
       <div class="compose-list">${cardsHtml}</div>
-      <details class="fui-disclose">
-        <summary>More tools</summary>
-        <div class="fui-disclose__body status-actions">
-          ${renderWorkspaceSwitcher()}
-          <button class="btn btn-outlined sm" id="compose-save">Save all</button>
-          <button class="btn btn-tonal sm" id="compose-add-day">Add day</button>
-          <button class="btn btn-text sm" id="compose-install-cron">Enable daily automation</button>
-        </div>
-      </details>
     </section>`;
 }
 
@@ -1870,28 +1539,24 @@ function renderCalendar() {
   }).join('');
 
   return `
-    <section class="page-theater cal-shell">
-      <p class="deck-label">02 · Calendar</p>
+    <section class="section cal-shell">
       <div class="cal-toolbar">
         <button type="button" class="btn btn-outlined sm" id="cal-prev" aria-label="Previous month">‹</button>
         <div class="cal-toolbar__title">
-          <h2 class="page-theater__title">${esc(cal.monthName)} ${cal.year}</h2>
-          <p class="section-lead">${cal.stats.monthEvents} events · tap a day to place work</p>
+          <h2>${esc(cal.monthName)} ${cal.year}</h2>
+          <p class="section-lead">${esc(cal.timezone)} · ${cal.stats.monthEvents} events this month</p>
         </div>
         <button type="button" class="btn btn-outlined sm" id="cal-next" aria-label="Next month">›</button>
         <button type="button" class="btn btn-tonal sm" id="cal-today">Today</button>
       </div>
       <div class="cal-weekdays">${cal.weekdayLabels.map(d => `<span>${d}</span>`).join('')}</div>
       <div class="cal-grid" role="grid" aria-label="Month calendar">${cells}</div>
-      <details class="fui-disclose">
-        <summary>Legend</summary>
-        <div class="fui-disclose__body cal-legend">
-          <span><i class="cal-dot scheduled"></i> Scheduled</span>
-          <span><i class="cal-dot running"></i> Running</span>
-          <span><i class="cal-dot completed"></i> Done</span>
-          <span><i class="cal-dot failed"></i> Failed</span>
-        </div>
-      </details>
+      <div class="cal-legend">
+        <span><i class="cal-dot scheduled"></i> Scheduled</span>
+        <span><i class="cal-dot running"></i> Running</span>
+        <span><i class="cal-dot completed"></i> Done</span>
+        <span><i class="cal-dot failed"></i> Failed</span>
+      </div>
       ${renderCalendarDayDetail(cal.selectedDay)}
     </section>`;
 }
@@ -1918,16 +1583,9 @@ function renderSettings() {
   const modes = S.meta?.deliveryModes || [];
   const deliveryMode = s.deliveryMode || 'summary';
   return `
-    <section class="page-theater">
-      <header class="page-theater__head page-theater__head--tight">
-        <div>
-          <p class="deck-label">05 · Config</p>
-          <h2 class="page-theater__title">Notifications</h2>
-          <p class="section-lead">What Omnish should ping you about.</p>
-        </div>
-      </header>
-    </section>
     <section class="section">
+      <h2>Notifications</h2>
+      <p class="section-lead">Omnish sends these to your phone when jobs change state.</p>
       <div class="settings-card"><label><input type="checkbox" id="set-start" ${s.notifyOnStart ? 'checked' : ''}/> Job started</label></div>
       <div class="settings-card"><label><input type="checkbox" id="set-done" ${s.notifyOnComplete ? 'checked' : ''}/> Job finished</label></div>
       <div class="settings-card"><label><input type="checkbox" id="set-fail" ${s.notifyOnFail ? 'checked' : ''}/> Job failed</label></div>
@@ -1936,51 +1594,49 @@ function renderSettings() {
         <button class="btn btn-outlined" id="btn-test-notify">Test notification</button>
       </div>
     </section>
-    <details class="fui-disclose">
-      <summary>Delivery</summary>
-      <div class="fui-disclose__body section">
-        <p class="section-lead">Send finished work instead of a generic finish notice.</p>
-        <div class="settings-card"><label><input type="checkbox" id="set-delivery" ${s.deliveryOnComplete ? 'checked' : ''}/> Deliver results when a job finishes</label></div>
-        <div class="settings-card settings-card--stacked">
-          <label for="set-delivery-mode">How to deliver</label>
-          <select id="set-delivery-mode">
-            ${modes.map(m => `<option value="${m.id}" ${deliveryMode === m.id ? 'selected' : ''}>${esc(m.label)}</option>`).join('')}
-          </select>
-          <p class="hint">${esc(modes.find(m => m.id === deliveryMode)?.description || '')}</p>
-        </div>
-        <div class="settings-card settings-card--stacked">
-          <label for="set-delivery-peer">Omnish recipient (optional)</label>
-          <input type="text" id="set-delivery-peer" placeholder="* for all peers, or +15551234567" value="${esc(s.deliveryPeer || '')}"/>
-        </div>
-        <div class="settings-card settings-card--stacked" id="delivery-link-wrap" ${deliveryMode !== 'link' ? 'hidden' : ''}>
-          <label for="set-public-url">Public link base URL</label>
-          <input type="text" id="set-public-url" placeholder="https://omnishpilot.eligapris.tech" value="${esc(s.publicUrl || '')}"/>
-        </div>
-        <div class="settings-actions">
-          <button class="btn btn-outlined" id="btn-test-delivery">Test delivery</button>
-        </div>
+    <section class="section">
+      <h2>Delivery</h2>
+      <p class="section-lead">When enabled, Omnish sends the finished work using the method below instead of a generic finish notice.</p>
+      <div class="settings-card"><label><input type="checkbox" id="set-delivery" ${s.deliveryOnComplete ? 'checked' : ''}/> Deliver results when a job finishes</label></div>
+      <div class="settings-card settings-card--stacked">
+        <label for="set-delivery-mode">How to deliver</label>
+        <select id="set-delivery-mode">
+          ${modes.map(m => `<option value="${m.id}" ${deliveryMode === m.id ? 'selected' : ''}>${esc(m.label)}</option>`).join('')}
+        </select>
+        <p class="hint">${esc(modes.find(m => m.id === deliveryMode)?.description || '')}</p>
       </div>
-    </details>
-    <details class="fui-disclose">
-      <summary>Workspaces</summary>
-      <div class="fui-disclose__body section">
-        <p class="section-lead">Project folders OmnishPilot can run against.</p>
-        ${(S.meta?.workspaces || []).map(w => `
-          <div class="task-card" style="cursor:default;margin-bottom:8px">
-            <div class="task-card__body">
-              <div style="width:100%">
-                <div class="task-title">${esc(w.name)}</div>
-                ${w.description ? `<div class="task-sub">${esc(w.description)}</div>` : ''}
-                <div style="margin-top:6px">${pathFieldHTML({ dataField: `ws-path-${esc(w.id)}`, value: w.rootPath, browse: false, readonly: true })}</div>
-              </div>
+      <div class="settings-card settings-card--stacked">
+        <label for="set-delivery-peer">Omnish recipient (optional)</label>
+        <input type="text" id="set-delivery-peer" placeholder="* for all peers, or +15551234567" value="${esc(s.deliveryPeer || '')}"/>
+        <p class="hint">Leave blank to use the default from omnishpilot.config.json.</p>
+      </div>
+      <div class="settings-card settings-card--stacked" id="delivery-link-wrap" ${deliveryMode !== 'link' ? 'hidden' : ''}>
+        <label for="set-public-url">Public link base URL</label>
+        <input type="text" id="set-public-url" placeholder="https://omnishpilot.eligapris.tech" value="${esc(s.publicUrl || '')}"/>
+        <p class="hint">Used when delivery mode is Message + link.</p>
+      </div>
+      <div class="settings-actions">
+        <button class="btn btn-outlined" id="btn-test-delivery">Test delivery</button>
+      </div>
+    </section>
+    <section class="section">
+      <h2>Workspaces</h2>
+      <p class="section-lead">Each workspace is a project folder OmnishPilot can read and run jobs against.</p>
+      ${(S.meta?.workspaces || []).map(w => `
+        <div class="task-card" style="cursor:default;margin-bottom:8px">
+          <div class="task-card__body">
+            <div style="width:100%">
+              <div class="task-title">${esc(w.name)}</div>
+              ${w.description ? `<div class="task-sub">${esc(w.description)}</div>` : ''}
+              <div style="margin-top:6px">${pathFieldHTML({ dataField: `ws-path-${esc(w.id)}`, value: w.rootPath, browse: false, readonly: true })}</div>
             </div>
-          </div>`).join('')}
-        <p class="section-lead" style="margin-top:12px">Add workspaces in <code>omnishpilot.config.json</code>.</p>
+          </div>
+        </div>`).join('')}
+      <p class="section-lead" style="margin-top:12px">Add workspaces in <code>omnishpilot.config.json</code>.</p>
+      <div class="settings-actions" style="margin-top:16px">
+        <button type="button" class="btn btn-outlined" id="btn-sign-out">Sign out</button>
       </div>
-    </details>
-    <div class="settings-actions" style="margin-top:16px">
-      <button type="button" class="btn btn-outlined" id="btn-sign-out">Sign out</button>
-    </div>`;
+    </section>`;
 }
 
 function render() {
@@ -1991,11 +1647,6 @@ function render() {
   else if (S.tab === 'compose') main.innerHTML = renderCompose();
   else if (S.tab === 'settings') main.innerHTML = renderSettings();
   bindMain();
-  // Home = command ready; other tabs stow until › Command
-  if (S.tab === 'home') S.ui.consoleOpen = true;
-  else if (!S.ui.consoleOpen) { /* keep stowed */ }
-  else { /* overlay stays if user opened command on another tab */ }
-  syncCommandTheater();
 }
 
 function renderScheduleFields(schedule, prefix = 'w') {
@@ -2121,12 +1772,12 @@ function closeModals() {
 
 function renderWizard() {
   const w = S.wizard;
-  document.getElementById('wizard-title').textContent = WIZARD_STEPS[w.step] || 'Arm job';
+  document.getElementById('wizard-title').textContent = WIZARD_STEPS[w.step] || 'New job';
   document.getElementById('wizard-steps').innerHTML = WIZARD_STEPS.map((_, i) =>
     `<div class="wstep ${i < w.step ? 'done' : ''} ${i === w.step ? 'active' : ''}"></div>`
   ).join('');
   document.getElementById('wizard-back').hidden = w.step === 0;
-  document.getElementById('wizard-next').textContent = w.step === 3 ? 'Arm job' : 'Continue';
+  document.getElementById('wizard-next').textContent = w.step === 3 ? 'Create job' : 'Continue';
 
   const body = document.getElementById('wizard-body');
   if (w.step === 0) {
@@ -2715,18 +2366,8 @@ function bindMain() {
   });
   document.getElementById('btn-import-jobs')?.addEventListener('click', () => openImportModal());
   document.getElementById('btn-new-campaign')?.addEventListener('click', openNewCampaignModal);
-  document.getElementById('btn-add-inline')?.addEventListener('click', () => {
-    const fail = S.dashboard?.failed?.[0];
-    if (fail?.id && (S.dashboard?.failed?.length || 0) > 0 && !(S.dashboard?.stats?.running || S.dashboard?.liveRuns?.length)) {
-      openTask(fail.id);
-      return;
-    }
-    openWizard();
-  });
+  document.getElementById('btn-add-inline')?.addEventListener('click', () => openWizard());
   document.getElementById('btn-add-inline2')?.addEventListener('click', () => openWizard());
-  document.getElementById('instruments-panel')?.addEventListener('toggle', (e) => {
-    S.ui.instrumentsOpen = e.target.open;
-  });
   document.getElementById('btn-sync')?.addEventListener('click', async () => {
     const total = S.timeline?.totalDays || 30;
     const r = await api('/api/tasks/bulk', {
@@ -2788,63 +2429,46 @@ async function saveSettings() {
 }
 
 const TAB_TITLES = {
-  home: 'Jobs',
+  home: 'Overview',
   calendar: 'Calendar',
   timeline: 'Timeline',
   compose: 'Compose',
   settings: 'Settings',
 };
 
-const TAB_CODES = {
-  home: 'Overview',
-  calendar: 'Schedule',
-  timeline: 'History',
-  compose: 'Write',
-  settings: 'Settings',
-};
-
-function bootMain() {
-  const main = document.getElementById('main');
-  if (!main) return;
-  main.classList.remove('is-booting');
-  void main.offsetWidth;
-  main.classList.add('is-booting');
-}
-
 function setActiveTab(tab) {
   S.tab = tab;
-  // Leaving Deck closes overlay command; arriving on Deck opens docked command
-  S.ui.consoleOpen = tab === 'home';
-  document.querySelectorAll('.dock__item[data-tab]').forEach(el => {
-    el.classList.toggle('active', el.dataset.tab === tab);
+  document.querySelectorAll('[data-tab]').forEach(el => {
+    if (el.classList.contains('bottom-nav__item') || el.classList.contains('sidebar-nav__item')) {
+      el.classList.toggle('active', el.dataset.tab === tab);
+    }
   });
   const title = document.getElementById('page-title');
   if (title) title.textContent = TAB_TITLES[tab] || 'OmnishPilot';
-  const code = document.getElementById('page-code');
-  if (code) code.textContent = TAB_CODES[tab] || 'SYS.00';
-  bootMain();
   if (tab === 'calendar') {
     loadCalendar().catch(e => toast(e.message));
-    syncCommandTheater();
     return;
   }
   if (tab === 'compose') {
     loadComposer().catch(e => toast(e.message));
-    syncCommandTheater();
     return;
   }
   render();
 }
 
-document.querySelectorAll('.dock__item[data-tab]').forEach(tab => {
-  tab.addEventListener('click', () => setActiveTab(tab.dataset.tab));
+document.querySelectorAll('[data-tab]').forEach(tab => {
+  if (tab.classList.contains('bottom-nav__item') || tab.classList.contains('sidebar-nav__item')) {
+    tab.addEventListener('click', () => setActiveTab(tab.dataset.tab));
+  }
 });
 
-document.getElementById('btn-add-work')?.addEventListener('click', () => goToCommand());
-document.getElementById('btn-add-work-sidebar')?.addEventListener('click', () => goToCommand());
-document.getElementById('fab-add-work')?.addEventListener('click', () => goToCommand());
+document.getElementById('btn-add-work').addEventListener('click', () => openWizard());
+document.getElementById('btn-add-work-sidebar')?.addEventListener('click', () => openWizard());
+document.getElementById('fab-add-work').addEventListener('click', () => openWizard());
 
-// --- Quick add: lives outside #main so poll never wipes mid-typing ---
+// --- Quick add: one text box that interprets a plain-language request into a job spec,
+// sitting alongside (not replacing) the full New job wizard. Lives outside #main so the
+// 10s dashboard poll never wipes what the user is mid-typing.
 const quickAddFolderRow = document.getElementById('quick-add-folder-row');
 if (quickAddFolderRow) {
   quickAddFolderRow.innerHTML = pathFieldHTML({ id: 'quick-add-workspace', placeholder: '/path/to/project (optional)' });
@@ -2853,39 +2477,10 @@ if (quickAddFolderRow) {
 document.getElementById('quick-add-folder-toggle')?.addEventListener('click', () => {
   quickAddFolderRow?.classList.toggle('hidden');
 });
-document.getElementById('command-console')?.addEventListener('submit', (e) => {
-  e.preventDefault();
-  submitQuickAdd();
+document.getElementById('quick-add-go')?.addEventListener('click', submitQuickAdd);
+document.getElementById('quick-add-input')?.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') { e.preventDefault(); submitQuickAdd(); }
 });
-document.getElementById('btn-console-toggle')?.addEventListener('click', () => {
-  if (S.tab === 'home') {
-    document.getElementById('quick-add-input')?.focus();
-    return;
-  }
-  setConsoleOpen(!S.ui.consoleOpen);
-});
-document.getElementById('btn-console-stow')?.addEventListener('click', () => setConsoleOpen(false));
-document.getElementById('command-theater-veil')?.addEventListener('click', () => setConsoleOpen(false));
-document.getElementById('btn-command-wizard')?.addEventListener('click', () => {
-  if (S.tab !== 'home') setConsoleOpen(false);
-  openWizard();
-});
-document.addEventListener('keydown', (e) => {
-  // Esc closes overlay only — Deck command stays
-  if (e.key === 'Escape' && S.ui.consoleOpen && S.tab !== 'home') {
-    e.preventDefault();
-    setConsoleOpen(false);
-  }
-  if (e.key === '/' && !e.metaKey && !e.ctrlKey) {
-    const t = e.target;
-    const tag = t?.tagName;
-    if (tag === 'INPUT' || tag === 'TEXTAREA' || t?.isContentEditable) return;
-    e.preventDefault();
-    goToCommand();
-  }
-});
-S.ui.consoleOpen = S.tab === 'home';
-syncCommandTheater();
 
 async function submitQuickAdd() {
   const input = document.getElementById('quick-add-input');
@@ -3118,35 +2713,6 @@ document.getElementById('wizard-next').addEventListener('click', async () => {
   await submitWizard();
 });
 
-function tickFuiClock() {
-  const el = document.getElementById('chip-clock');
-  if (!el) return;
-  const now = new Date();
-  el.textContent = now.toLocaleTimeString([], { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' });
-}
-tickFuiClock();
-setInterval(tickFuiClock, 1000);
-
-function runBootOpen() {
-  const params = new URLSearchParams(location.search);
-  if (params.get('boot') !== '1') return;
-  const shell = document.getElementById('app-shell');
-  if (!shell) return;
-  shell.classList.add('is-booting-open');
-  bootMain();
-  params.delete('boot');
-  const q = params.toString();
-  history.replaceState({}, '', location.pathname + (q ? `?${q}` : '') + location.hash);
-  setTimeout(() => shell.classList.remove('is-booting-open'), 900);
-  // Already on Deck with docked command — focus input
-  S.ui.consoleOpen = true;
-  syncCommandTheater();
-}
-runBootOpen();
-
-refresh().then(() => {
-  updateRunChip(S.dashboard);
-  S.poll = setInterval(refresh, 10000);
-}).catch(e => {
+refresh().then(() => { S.poll = setInterval(refresh, 10000); }).catch(e => {
   document.getElementById('main').innerHTML = `<div class="empty">${esc(e.message)}<br><br>Start the server: <code>cd AgentBoard && npm start</code></div>`;
 });
