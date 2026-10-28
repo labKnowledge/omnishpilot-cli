@@ -17,6 +17,7 @@ Research + implementation snapshot of the local autonomy harness.
 | Webhook wake | GitHub / Linear start a job | **have** |
 | Morning pack | Wake to a verdict, not a log wall | **have** |
 | Soak / deny-test | Prove autonomy + escape blocked | **have** |
+| Pure terminal schedule | Cron-like commands/scripts/apps, no agent | **have** |
 
 ## Have now
 
@@ -24,6 +25,7 @@ Research + implementation snapshot of the local autonomy harness.
 - Unattended command templates (`--yolo` / `--dangerously-skip-permissions`)
 - Sandbox wrap + `doctor` / `deny-test` / autonomous gate
 - Scheduler, worker, supervisor heartbeats, Omnish notify/delivery
+- **Shell-command jobs** — schedule any terminal command, script, or app with no agent (`templateId: shell-command`, CLI `--command`)
 - **Acceptance profiles** — required artifacts + optional test command; retry until green
 - **Verifier agent** — optional second pass must print `VERDICT: PASS`
 - **Git worktree per run** — generic-agent jobs on git workspaces
@@ -32,7 +34,7 @@ Research + implementation snapshot of the local autonomy harness.
 - **Webhook triggers** — `POST /hooks/github|linear|generic?token=…`
 - **Morning pack** — gate + artifacts + diff summary via Omnish
 - Quick-add plain language → job spec
-- Workload templates (social video, research, code change)
+- Workload templates (social video, research, code change, terminal command)
 
 ## Config surface (new)
 

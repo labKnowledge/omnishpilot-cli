@@ -1,6 +1,6 @@
 /** Human-first task templates — what users pick, not how engineers run scripts */
 
-const { LEAPTR_CAMPAIGN, LEAPTR_DELIVER, GENERIC_AGENT } = require('./connectors/ids');
+const { LEAPTR_CAMPAIGN, LEAPTR_DELIVER, GENERIC_AGENT, SHELL_COMMAND } = require('./connectors/ids');
 
 const TEMPLATES = [
   {
@@ -105,6 +105,52 @@ const TEMPLATES = [
       { key: 'acceptance', label: 'Done when...', help: 'How we know it worked' },
     ],
     connector: GENERIC_AGENT,
+  },
+  {
+    id: 'shell-command',
+    name: 'Terminal command',
+    icon: '⌨️',
+    description: 'Run any shell command, script, or app on a schedule — no AI agent involved.',
+    category: 'automation',
+    defaultRunMode: 'manual',
+    defaultMaxAttempts: 1,
+    outputs: [],
+    fields: [
+      { key: 'title', label: 'Name', type: 'text', required: true, placeholder: 'Nightly backup' },
+      {
+        key: 'command',
+        label: 'Command',
+        type: 'textarea',
+        required: true,
+        placeholder: 'rsync -a /data /backup   or   ./scripts/nightly.sh   or   python app.py',
+        help: 'Exact terminal command. Runs with your shell (bash -lc / cmd). Exit 0 = success.',
+      },
+      {
+        key: 'cwd',
+        label: 'Working directory',
+        type: 'path',
+        placeholder: '/path/to/folder',
+        help: 'Optional. Folder to run in. Leave blank for the server process cwd.',
+      },
+      {
+        key: 'env',
+        label: 'Extra environment',
+        type: 'textarea',
+        advanced: true,
+        placeholder: 'FOO=bar\nBAZ=1',
+        help: 'Optional KEY=value lines merged into the process environment.',
+      },
+      {
+        key: 'sandbox',
+        label: 'Run inside sandbox',
+        type: 'select',
+        options: ['false', 'true'],
+        advanced: true,
+        help: 'Default is host (like cron). Set true to wrap with bubblewrap/docker when configured.',
+      },
+    ],
+    instructionSections: [],
+    connector: SHELL_COMMAND,
   },
 ];
 

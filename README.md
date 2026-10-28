@@ -97,6 +97,9 @@ omnishpilot add "research competitor pricing into a one-pager"
 # → agent-task, once at now+5m (deterministic; no LLM interpret)
 omnishpilot add --workspace ~/proj --now --follow "fix the auth redirect"
 omnishpilot add --daily 09:00 "triage overnight CI"
+# Pure terminal — no agent (cron-like command / script / app):
+omnishpilot add --command --daily 02:00 --workspace ~/data "./backup.sh"
+omnishpilot add -c --hourly "curl -fsS https://example.com/health >/dev/null"
 omnishpilot progress <id> --json
 omnishpilot follow <id>
 omnishpilot password set 'your-secret'   # set UI password from CLI

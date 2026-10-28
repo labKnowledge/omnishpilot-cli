@@ -1737,6 +1737,15 @@ function renderTaskScheduleEditor(t) {
 
 const WIZARD_STEPS = ['Job type', 'Details', 'Schedule', 'Instructions'];
 
+function wizardLastStep(w) {
+  const tpl = (S.meta?.templates || []).find(t => t.id === w.templateId);
+  return (tpl?.instructionSections?.length) ? 3 : 2;
+}
+
+function isShellTemplate(templateId) {
+  return templateId === 'shell-command';
+}
+
 async function ensureWizardSuggestions(templateId) {
   const w = S.wizard;
   if (!templateId || w.suggestionsTemplateId === templateId) return;
@@ -1772,12 +1781,15 @@ function closeModals() {
 
 function renderWizard() {
   const w = S.wizard;
-  document.getElementById('wizard-title').textContent = WIZARD_STEPS[w.step] || 'New job';
-  document.getElementById('wizard-steps').innerHTML = WIZARD_STEPS.map((_, i) =>
+  const lastStep = wizardLastStep(w);
+  if (w.step > lastStep) w.step = lastStep;
+  const stepLabels = WIZARD_STEPS.slice(0, lastStep + 1);
+  document.getElementById('wizard-title').textContent = stepLabels[w.step] || 'New job';
+  document.getElementById('wizard-steps').innerHTML = stepLabels.map((_, i) =>
     `<div class="wstep ${i < w.step ? 'done' : ''} ${i === w.step ? 'active' : ''}"></div>`
   ).join('');
   document.getElementById('wizard-back').hidden = w.step === 0;
-  document.getElementById('wizard-next').textContent = w.step === 3 ? 'Create job' : 'Continue';
+  document.getElementById('wizard-next').textContent = w.step === lastStep ? 'Create job' : 'Continue';
 
   const body = document.getElementById('wizard-body');
   if (w.step === 0) {
@@ -1791,7 +1803,7 @@ function renderWizard() {
             <button type="button" class="btn btn-text sm" id="wizard-paste-clear">Clear</button>
           </div>
         </div>` : ''}
-      <p class="section-lead">Pick what the agent should do. You can edit instructions before anything runs.</p>
+      <p class="section-lead">Pick a job type — agent work, or a plain terminal command/script with no AI.</p>
       <div class="template-grid">
         ${(S.meta?.templates || []).map(t => `
           <button type="button" class="template-card ${w.templateId === t.id ? 'selected' : ''}" data-template="${t.id}">
@@ -1883,14 +1895,13 @@ function renderWizard() {
       ? (S.meta?.scheduleTypes || []).find(s => s.id === schedSuggestion.value)?.label
       : null;
     const showSchedHint = schedSuggestionLabel && normalizeScheduleType(w.schedule.type) !== normalizeScheduleType(schedSuggestion.value);
-    body.innerHTML = `
-      <div class="field"><label>When should this run?</label>
-        <select id="w-schedule">
-          ${(S.meta?.scheduleTypes || []).map(s => `<option value="${s.id}" ${normalizeScheduleType(w.schedule.type) === normalizeScheduleType(s.id) ? 'selected' : ''}>${esc(s.label)}</option>`).join('')}
-        </select>
-        ${showSchedHint ? `<div class="suggestion-chip">💡 Usually "${esc(schedSuggestionLabel)}" for this job (${schedSuggestion.count}×) <button type="button" class="btn btn-text sm" id="w-schedule-suggest-apply">Use it</button></div>` : ''}
-      </div>
-      <div id="w-schedule-fields">${renderScheduleFields(w.schedule)}</div>
+    const shellJob = isShellTemplate(w.templateId);
+    if (shellJob) w.runMode = 'manual';
+    const modeBlock = shellJob ? `
+      <div class="mode-summary">
+        <strong>Terminal only</strong>
+        <span>Runs your command directly — no agent, no prompts.</span>
+      </div>` : `
       <div class="field"><label>How should it run?</label></div>
       ${w.runModeOpen ? `
         <div class="mode-chips">
@@ -1909,6 +1920,15 @@ function renderWizard() {
           </div>
           <button type="button" class="btn btn-text sm" id="w-mode-expand">Change how it runs</button>`;
       })()}`;
+    body.innerHTML = `
+      <div class="field"><label>When should this run?</label>
+        <select id="w-schedule">
+          ${(S.meta?.scheduleTypes || []).map(s => `<option value="${s.id}" ${normalizeScheduleType(w.schedule.type) === normalizeScheduleType(s.id) ? 'selected' : ''}>${esc(s.label)}</option>`).join('')}
+        </select>
+        ${showSchedHint ? `<div class="suggestion-chip">💡 Usually "${esc(schedSuggestionLabel)}" for this job (${schedSuggestion.count}×) <button type="button" class="btn btn-text sm" id="w-schedule-suggest-apply">Use it</button></div>` : ''}
+      </div>
+      <div id="w-schedule-fields">${renderScheduleFields(w.schedule)}</div>
+      ${modeBlock}`;
   } else if (w.step === 3) {
     const tpl = S.meta.templates.find(t => t.id === w.templateId);
     if (!Object.keys(w.instructions).length) {
@@ -2018,9 +2038,12 @@ function buildInstructionsFromInputs(tpl, inputs, learnedSkeletons) {
 async function submitWizard() {
   const w = S.wizard;
   const tpl = S.meta.templates.find(t => t.id === w.templateId);
-  w.instructions[S.instrTab] = document.getElementById('instr-editor')?.value || w.instructions[S.instrTab];
+  if (document.getElementById('instr-editor')) {
+    w.instructions[S.instrTab] = document.getElementById('instr-editor')?.value || w.instructions[S.instrTab];
+  }
   const schedule = readScheduleFields({ ...w.schedule });
   if (w.inputs.dayNumber && schedule.type === 'campaign_day') schedule.campaignDay = Number(w.inputs.dayNumber);
+  if (isShellTemplate(w.templateId)) w.runMode = 'manual';
 
   await api('/api/tasks', {
     method: 'POST',
@@ -2065,13 +2088,32 @@ async function openTask(id) {
   const muteBtn = muteEligible ? `<button class="btn btn-text" id="task-mute">${t.muted ? 'Unmute' : 'Mute'}</button>` : '';
   const copyBtn = '<button class="btn btn-text" id="task-copy">Copy</button>';
   const hasAgentField = data.template?.fields?.some(f => f.type === 'agent-select');
+  const shellJob = isShellTemplate(t.templateId);
 
   body.innerHTML = `
-    <p style="margin-bottom:.75rem">${statusBadge(t.status)}${t.muted ? '<span class="badge muted" style="margin-left:.35rem">Muted</span>' : ''} <span style="color:var(--md-sys-color-on-surface-variant);margin-left:.5rem">${esc(runModeLabel(t.runMode))} · ${esc(scheduleLabelForTask(t))}</span></p>
+    <p style="margin-bottom:.75rem">${statusBadge(t.status)}${t.muted ? '<span class="badge muted" style="margin-left:.35rem">Muted</span>' : ''} <span style="color:var(--md-sys-color-on-surface-variant);margin-left:.5rem">${esc(shellJob ? 'Terminal' : runModeLabel(t.runMode))} · ${esc(scheduleLabelForTask(t))}</span></p>
     ${t.execution?.error ? `<div class="post-box is-error" style="margin-bottom:12px">${esc(t.execution.error)}</div>` : ''}
     ${t.summary ? `<p style="color:var(--md-sys-color-on-surface-variant);margin-bottom:.75rem">${esc(t.summary)}</p>` : ''}
     ${media}
     ${editable && (t.status === 'scheduled' || t.status === 'draft') ? renderTaskScheduleEditor(t) : ''}
+    ${editable && shellJob ? `
+      <h3 class="section-title">Command</h3>
+      <div class="field">
+        <label>Terminal command</label>
+        <textarea class="instr-editor" id="task-shell-command" style="min-height:72px;font-family:ui-monospace,monospace">${esc(t.inputs?.command || '')}</textarea>
+      </div>
+      <div class="field">
+        <label>Working directory</label>
+        ${pathFieldHTML({ id: 'task-shell-cwd', value: t.inputs?.cwd || '', placeholder: '/path/to/folder' })}
+      </div>
+      <div class="status-actions" style="margin-bottom:12px">
+        <button class="btn btn-outlined" id="task-save-shell">Save command</button>
+        <button class="btn btn-tonal" id="task-start">Run now</button>
+        ${['scheduled', 'failed'].includes(t.status) ? '<button class="btn btn-text" id="task-stop">Stop</button>' : ''}
+        ${muteBtn}
+        ${copyBtn}
+      </div>
+    ` : ''}
     ${editable && hasAgentField ? `
       <h3 class="section-title">Agent</h3>
       <div class="field"><label>Agent</label>${renderAgentSelect('task-agent-id', t.inputs?.agentId)}</div>
@@ -2089,7 +2131,7 @@ async function openTask(id) {
       </div>
       <pre class="log-box" id="task-command-preview" style="display:none;white-space:pre-wrap;word-break:break-all"></pre>
     ` : ''}
-    ${editable ? `
+    ${editable && !shellJob ? `
       <p class="section-lead" style="margin:12px 0">Edit instructions, then run when you are ready.${t.status === 'failed' ? ' Fix the workspace path or leave it blank to use the default.' : ''}</p>
       <div class="instr-tabs">${instrKeys.map(s =>
         `<button type="button" class="instr-tab ${S.instrTab === s.key ? 'active' : ''}" data-instr-task="${s.key}">${esc(s.label)}</button>`
@@ -2101,7 +2143,7 @@ async function openTask(id) {
         ${['scheduled', 'failed'].includes(t.status) ? '<button class="btn btn-text" id="task-stop">Stop</button>' : ''}
         ${muteBtn}
         ${copyBtn}
-      </div>` : `
+      </div>` : editable && shellJob ? '' : `
       <div class="status-actions">
         ${t.status === 'failed' ? '<button class="btn btn-filled" id="task-retry">Try again</button>' : ''}
         ${t.status === 'completed' ? '<button class="btn btn-outlined" id="task-deliver">Send via Omnish</button>' : ''}
@@ -2117,6 +2159,7 @@ async function openTask(id) {
     ${data.artifacts?.length ? `<div class="asset-row">${data.artifacts.map(a => `<a class="btn ghost" href="${a.url}" target="_blank">${esc(a.name)}</a>`).join('')}</div>` : ''}`;
 
   document.getElementById('task-modal').classList.remove('hidden');
+  wirePathPickers(body);
 
   body.querySelectorAll('[data-instr-task]').forEach(btn => {
     btn.onclick = () => {
@@ -2124,6 +2167,18 @@ async function openTask(id) {
       S.instrTab = btn.dataset.instrTask;
       openTask(id);
     };
+  });
+
+  document.getElementById('task-save-shell')?.addEventListener('click', async () => {
+    const inputs = {
+      ...t.inputs,
+      command: document.getElementById('task-shell-command')?.value || '',
+      cwd: document.getElementById('task-shell-cwd')?.value?.trim() || '',
+    };
+    if (!inputs.command.trim()) { toast('Command is required'); return; }
+    await api(`/api/tasks/${id}`, { method: 'PATCH', body: { inputs } });
+    t.inputs = inputs;
+    toast('Command saved');
   });
 
   document.getElementById('task-save-instr')?.addEventListener('click', async () => {
@@ -2706,10 +2761,14 @@ document.getElementById('wizard-next').addEventListener('click', async () => {
   if (w.step === 2) {
     w.schedule.type = document.getElementById('w-schedule')?.value || w.schedule.type;
     readScheduleFields(w.schedule);
-    w.runMode = document.querySelector('.mode-chip.selected')?.dataset.mode || w.runMode;
+    if (isShellTemplate(w.templateId)) w.runMode = 'manual';
+    else w.runMode = document.querySelector('.mode-chip.selected')?.dataset.mode || w.runMode;
   }
-  if (w.step < 3) { w.step++; renderWizard(); return; }
-  w.instructions[S.instrTab] = document.getElementById('instr-editor')?.value || '';
+  const lastStep = wizardLastStep(w);
+  if (w.step < lastStep) { w.step++; renderWizard(); return; }
+  if (document.getElementById('instr-editor')) {
+    w.instructions[S.instrTab] = document.getElementById('instr-editor')?.value || '';
+  }
   await submitWizard();
 });
 

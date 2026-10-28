@@ -244,7 +244,10 @@ async function executeTask(task) {
 
   if (!runner.child) {
     const updated = store.getTask(task.id);
-    await failTask(task.id, updated, 'Failed to start agent process', settings);
+    const startErr = connector === ids.SHELL_COMMAND
+      ? 'Failed to start command process'
+      : 'Failed to start agent process';
+    await failTask(task.id, updated, startErr, settings);
     worktree.cleanupWorktree(worktreeMeta, { success: false });
     return store.getTask(task.id);
   }
@@ -324,21 +327,26 @@ async function executeTask(task) {
   }
 
   const err = code === -1
-    ? 'Agent process failed to start (check workspace path exists and agent-run is installed)'
+    ? (connector === ids.SHELL_COMMAND
+      ? 'Command process failed to start (check the shell, PATH, and working directory)'
+      : 'Agent process failed to start (check workspace path exists and agent-run is installed)')
     : `Process exited with code ${code}`;
 
-  const failover = applyLimitFailover(task, updated, err, logPath);
-  if (failover) {
-    const notify = failover._notify;
-    delete failover._notify;
-    store.updateTask(task.id, failover);
-    if (notify?.type === 'switch') {
-      await omnish.agentLimitSwitch(updated, notify.from, notify.to);
-    } else if (notify?.type === 'all_limited') {
-      await omnish.agentsAllLimited(updated, notify.order, notify.resumeAt);
+  // Agent rate-limit failover does not apply to pure shell jobs.
+  if (connector !== ids.SHELL_COMMAND) {
+    const failover = applyLimitFailover(task, updated, err, logPath);
+    if (failover) {
+      const notify = failover._notify;
+      delete failover._notify;
+      store.updateTask(task.id, failover);
+      if (notify?.type === 'switch') {
+        await omnish.agentLimitSwitch(updated, notify.from, notify.to);
+      } else if (notify?.type === 'all_limited') {
+        await omnish.agentsAllLimited(updated, notify.order, notify.resumeAt);
+      }
+      worktree.cleanupWorktree(worktreeMeta, { success: false });
+      return store.getTask(task.id);
     }
-    worktree.cleanupWorktree(worktreeMeta, { success: false });
-    return store.getTask(task.id);
   }
 
   await failTask(task.id, updated, err, settings);

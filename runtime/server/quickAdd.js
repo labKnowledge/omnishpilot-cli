@@ -89,7 +89,9 @@ ${runModeList}
   "runMode": "..."
 }
 \`\`\`
-Only include input keys that belong to the chosen template's field list. Leave "workspace" empty if none was given. If the request doesn't clearly state a schedule, use "manual". If it doesn't clearly match any job type, use "agent-task".`;
+Only include input keys that belong to the chosen template's field list. Leave "workspace" empty if none was given. If the request doesn't clearly state a schedule, use "manual". If it doesn't clearly match any job type, use "agent-task".
+
+Special case — pure terminal work (no AI): if the user is clearly scheduling a shell command, script path, cron-like job, or app launch (e.g. "every night run ./backup.sh", "hourly: curl https://…", "daily at 2am rsync …") with no research/writing/coding for an agent, use templateId "shell-command", put the exact command in inputs.command, optional folder in inputs.cwd, and set runMode to "manual".`;
 }
 
 function extractJson(stdout) {

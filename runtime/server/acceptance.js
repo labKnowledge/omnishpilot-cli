@@ -31,6 +31,24 @@ function resolveAcceptance(task, cfg = loadConfig()) {
   const raw = task.acceptance
     || (task.inputs?.acceptance && typeof task.inputs.acceptance === 'object' ? task.inputs.acceptance : null)
     || {};
+
+  // Pure shell jobs succeed on exit 0 unless the user explicitly set gates.
+  if (task.templateId === 'shell-command') {
+    const hasExplicit = Boolean(raw.requiredArtifacts?.length)
+      || Boolean(raw.testCommand)
+      || raw.enabled === true;
+    if (!hasExplicit) {
+      return {
+        enabled: false,
+        requiredArtifacts: [],
+        testCommand: null,
+        verifier: false,
+        soft: false,
+        text: '',
+      };
+    }
+  }
+
   const text = [
     typeof task.inputs?.acceptance === 'string' ? task.inputs.acceptance : '',
     task.instructions?.acceptance || '',
@@ -65,7 +83,7 @@ function resolveAcceptance(task, cfg = loadConfig()) {
     ),
     requiredArtifacts,
     testCommand,
-    verifier,
+    verifier: task.templateId === 'shell-command' ? false : verifier,
     soft,
     text: text.trim(),
   };

@@ -15,6 +15,7 @@ const path = require('path');
 const ids = require('./ids');
 const leaptr = require('./leaptr');
 const agent = require('./agent');
+const shell = require('./shell');
 
 // The one addressing scheme every day-pipeline connector shares: a task belongs to a
 // numbered day, whether that's stored as inputs.dayNumber (ad-hoc/manual entry) or
@@ -102,6 +103,23 @@ const CONNECTORS = {
     collectResultFiles: ({ outDir }) => {
       if (!outDir) return [];
       const files = agent.listOutputArtifacts(outDir).map(a => ({ name: a.name, path: a.path }));
+      files.push({ name: 'output-dir', path: outDir });
+      return files;
+    },
+  },
+
+  [ids.SHELL_COMMAND]: {
+    run: ({ task, logPath }) => shell.runShellCommand(task, logPath),
+    listArtifacts: ({ task, cfg }) => {
+      const outDir = path.join(cfg.dataDir, 'outputs', task.id);
+      return shell.listOutputArtifacts(outDir).map(a => ({
+        name: a.name,
+        url: `/api/tasks/${task.id}/outputs/${encodeURIComponent(a.name)}`,
+      }));
+    },
+    collectResultFiles: ({ outDir }) => {
+      if (!outDir) return [];
+      const files = shell.listOutputArtifacts(outDir).map(a => ({ name: a.name, path: a.path }));
       files.push({ name: 'output-dir', path: outDir });
       return files;
     },

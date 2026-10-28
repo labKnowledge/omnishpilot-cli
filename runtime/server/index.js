@@ -610,7 +610,7 @@ function createTaskFromBody(rawBody) {
     outputs: template.outputs,
     connector: template.connector,
     source: prepared.source || 'user',
-    maxAttempts: prepared.maxAttempts,
+    maxAttempts: prepared.maxAttempts || template.defaultMaxAttempts,
   });
 
   if (scheduler.normalizeType(prepared.schedule?.type) === 'now') {

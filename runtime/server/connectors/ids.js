@@ -5,4 +5,5 @@ module.exports = {
   LEAPTR_CAMPAIGN: 'leaptr-campaign',
   LEAPTR_DELIVER: 'leaptr-deliver',
   GENERIC_AGENT: 'generic-agent',
+  SHELL_COMMAND: 'shell-command',
 };
