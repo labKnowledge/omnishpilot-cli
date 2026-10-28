@@ -4,7 +4,7 @@ const fs = require('fs');
 const path = require('path');
 const { spawnSync } = require('child_process');
 const { loadConfig } = require('./config');
-const { resolveAgentRunBin } = require('./resolve-bin');
+const { resolveAgentRunSpawn } = require('./resolve-bin');
 const agents = require('./agents');
 const acceptance = require('./acceptance');
 
@@ -65,7 +65,6 @@ function runVerifier({ task, outDir, workspacePath, logPath, cfg = loadConfig() 
     return { skipped: true, ok: true, reason: 'verifier_disabled' };
   }
 
-  const bin = resolveAgentRunBin(cfg);
   const agentId = agents.pickAgent({
     requestedId: task.inputs?.verifierAgentId || cfg.acceptance?.verifierAgent || null,
     exclude: task.execution?.resolvedAgentId ? [task.execution.resolvedAgentId] : [],
@@ -90,8 +89,9 @@ function runVerifier({ task, outDir, workspacePath, logPath, cfg = loadConfig() 
   ];
   if (cfg.agent?.cursorModel) args.push('--model', cfg.agent.cursorModel);
 
+  const inv = resolveAgentRunSpawn(cfg, args);
   const timeoutMs = (cfg.acceptance?.verifierTimeoutSec || 600) * 1000;
-  const r = spawnSync(bin, args, {
+  const r = spawnSync(inv.bin, inv.args, {
     cwd: outDir,
     encoding: 'utf8',
     timeout: timeoutMs,

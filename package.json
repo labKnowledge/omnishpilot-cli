@@ -1,11 +1,12 @@
 {
   "name": "omnishpilot",
-  "version": "0.0.3",
+  "version": "0.0.4",
   "description": "OmnishPilot CLI — free autonomy harness: sandboxed unattended agent jobs (Linux, macOS, Windows)",
   "license": "MIT",
   "bin": {
     "omnishpilot": "bin/omnishpilot.js",
-    "agentboard": "bin/omnishpilot.js"
+    "agentboard": "bin/omnishpilot.js",
+    "agent-run": "bin/agent-run.js"
   },
   "main": "lib/index.js",
   "files": [
@@ -27,8 +28,9 @@
     "prepare": "node scripts/sync-runtime.js",
     "start": "node bin/omnishpilot.js start",
     "doctor": "node bin/omnishpilot.js doctor",
-    "check": "node --check bin/omnishpilot.js && node --check lib/index.js && node --check lib/daemon.js && node --check lib/service.js && node --check lib/watch.js && node --check lib/platform.js && node --check runtime/server/sandbox.js && node --check runtime/server/worker.js && node --check runtime/server/acceptance.js && node --check runtime/server/hang.js && node --check runtime/server/worktree.js && node --check runtime/server/verifier.js && node --check runtime/server/webhooks.js",
-    "test:autonomy": "node runtime/server/acceptance.test.js"
+    "check": "node --check bin/omnishpilot.js && node --check bin/agent-run.js && node --check lib/index.js && node --check lib/agent-run.js && node --check lib/daemon.js && node --check lib/service.js && node --check lib/watch.js && node --check lib/platform.js && node --check runtime/server/sandbox.js && node --check runtime/server/worker.js && node --check runtime/server/acceptance.js && node --check runtime/server/hang.js && node --check runtime/server/worktree.js && node --check runtime/server/verifier.js && node --check runtime/server/webhooks.js && node --check runtime/server/resolve-bin.js",
+    "test:autonomy": "node runtime/server/acceptance.test.js",
+    "test:agent-run": "node lib/agent-run.test.js"
   },
   "engines": {
     "node": ">=18"

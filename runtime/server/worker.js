@@ -329,7 +329,7 @@ async function executeTask(task) {
   const err = code === -1
     ? (connector === ids.SHELL_COMMAND
       ? 'Command process failed to start (check the shell, PATH, and working directory)'
-      : 'Agent process failed to start (check workspace path exists and agent-run is installed)')
+      : 'Agent process failed to start (check workspace path exists and that an agent CLI is installed)')
     : `Process exited with code ${code}`;
 
   // Agent rate-limit failover does not apply to pure shell jobs.

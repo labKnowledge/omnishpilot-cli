@@ -3,7 +3,7 @@
 const { spawnSync } = require('child_process');
 const { loadConfig } = require('./config');
 const store = require('./store');
-const { resolveAgentRunBin, which, augmentedPath } = require('./resolve-bin');
+const { resolveAgentRunBin, resolveAgentRunSpawn, which, augmentedPath } = require('./resolve-bin');
 
 /** Known coding-agent CLIs when agent-run is missing or returns empty (common on macOS launchd). */
 const FALLBACK_ADAPTERS = [
@@ -74,8 +74,8 @@ function getAgents() {
     const cfg = loadConfig();
     let list = [];
     try {
-      const bin = agentRunBin(cfg);
-      const r = spawnSync(bin, ['list', '--json'], {
+      const inv = resolveAgentRunSpawn(cfg, ['list', '--json']);
+      const r = spawnSync(inv.bin, inv.args, {
         encoding: 'utf8',
         timeout: 15000,
         env: spawnEnv(),
@@ -282,6 +282,7 @@ module.exports = {
   allPreferredLimited,
   agentRunBin,
   resolveAgentRunBin,
+  resolveAgentRunSpawn,
   DEFAULT_PREFERRED_ORDER,
   LIMIT_PATTERNS,
 };

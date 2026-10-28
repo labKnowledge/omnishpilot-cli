@@ -8,7 +8,7 @@ Research + implementation snapshot of the local autonomy harness.
 |------|----------------|--------|
 | Skip per-tool approvals | Approval walls kill automation | **have** (YOLO inside sandbox) |
 | Real isolation | Skip-permissions without a box = host YOLO | **have** (bwrap / docker / firejail) |
-| Any agent on the machine | Avoid vendor lock | **have** (agent-run) |
+| Any agent on the machine | Avoid vendor lock | **have** (bundled agent-run) |
 | Job lifecycle | Fire-and-forget needs queue, logs, retry, notify | **have** |
 | Done ≠ “model stopped” | Acceptance / verifier gates | **have** |
 | Failover + resume-at-reset | Rate limits / outages | **have** |
@@ -21,10 +21,11 @@ Research + implementation snapshot of the local autonomy harness.
 
 ## Have now
 
-- Multi-agent via `agent-run` (PATH-resolved; no hardcoded home path)
+- **Bundled `agent-run`** — ships in-package (Node); no separate install / no Python
+- Multi-agent via bundled agent-run (PATH-resolved agent CLIs; no hardcoded home path)
 - Unattended command templates (`--yolo` / `--dangerously-skip-permissions`)
-- Sandbox wrap + `doctor` / `deny-test` / autonomous gate
-- Scheduler, worker, supervisor heartbeats, Omnish notify/delivery
+- Sandbox wrap + `doctor` / `deny-test` / autonomous gate (OS backends: bwrap / docker / firejail — optional)
+- Scheduler, worker, supervisor heartbeats, Omnish notify/delivery (Omnish optional)
 - **Shell-command jobs** — schedule any terminal command, script, or app with no agent (`templateId: shell-command`, CLI `--command`)
 - **Acceptance profiles** — required artifacts + optional test command; retry until green
 - **Verifier agent** — optional second pass must print `VERDICT: PASS`
@@ -60,6 +61,21 @@ curl -X POST "http://127.0.0.1:4580/hooks/generic?token=YOUR_TOKEN" \
 ```
 
 GitHub / Linear payloads are summarized automatically into an `agent-task`.
+
+## Dependency posture
+
+| Dependency | Status |
+|------------|--------|
+| Node 18+ | required |
+| express | npm dependency (shipped) |
+| **agent-run** | **bundled** in this package (`bin/agent-run.js`) |
+| Agent CLIs (cursor-agent, claude, …) | optional — needed only for agent jobs |
+| Omnish | optional — notify / morning pack |
+| bubblewrap / docker / firejail | optional — Linux sandbox for autonomous agent runs |
+| git | optional — worktree isolation |
+| python3 | optional — Leaptr campaign state tools only |
+
+No separate agent-run install. Shell-command jobs need none of the agent/Omnish stack.
 
 ## Non-goals (for now)
 

@@ -12,6 +12,8 @@ Free **autonomy harness** for heavy agent work: schedule jobs, run any local/OSS
 
 Works on **Linux**, **macOS**, and **Windows** (Node **18+**). Sandbox isolation is strongest on Linux with [bubblewrap](https://github.com/containers/bubblewrap) (`bwrap`).
 
+**Self-contained CLI:** `agent-run` ships inside this package (`bin/agent-run.js` / npm bin `agent-run`). You do **not** need a separate agent-run install. Optional externals: Omnish (notify), agent CLIs (Cursor / Claude / …), and a sandbox backend on Linux.
+
 > Vendor routines (Claude cowork/routines, Cursor Automations) optimize for *simple* jobs and still hit approval walls or single-vendor lock-in. OmnishPilot trades simplicity for **possibility**: complex jobs that must complete alone, with your machine’s agents, contained by your sandbox.
 
 ---
@@ -114,7 +116,7 @@ API commands **auto-start** the daemon when it is not running. Disable with `--n
 
 ## Sandbox (required for autonomy)
 
-Unattended agents use skip-permissions / `--yolo` flags via `agent-run`. That is only safe inside isolation.
+Unattended agents use skip-permissions / `--yolo` flags via the **bundled** `agent-run`. That is only safe inside isolation.
 
 | Backend | When |
 |---------|------|

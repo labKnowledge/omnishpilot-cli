@@ -7,7 +7,7 @@ const agents = require('../agents');
 const store = require('../store');
 const sandbox = require('../sandbox');
 const acceptance = require('../acceptance');
-const { resolveAgentRunBin } = require('../resolve-bin');
+const { resolveAgentRunSpawn } = require('../resolve-bin');
 
 function parseEnvFile(filePath) {
   if (!fs.existsSync(filePath)) return {};
@@ -141,7 +141,6 @@ ${acceptanceBlock}${progressUpdatesBlock(cfg, task)}`;
     const { augmentedPath } = require('../resolve-bin');
     env.PATH = augmentedPath(env.PATH || process.env.PATH || '');
   } catch { /* ignore */ }
-  const agentRunBin = resolveAgentRunBin(cfg);
   const requestedAgentId = task.inputs?.agentId || task.execution?.agentId;
   const agentId = agents.pickAgent({ requestedId: requestedAgentId }) || requestedAgentId || 'auto';
   if (requestedAgentId && requestedAgentId !== 'auto' && agentId !== requestedAgentId) {
@@ -150,24 +149,27 @@ ${acceptanceBlock}${progressUpdatesBlock(cfg, task)}`;
   store.updateTask(task.id, { execution: { resolvedAgentId: agentId } });
   const model = cfg.agent?.cursorModel || env.CURSOR_MODEL;
 
-  const args = ['run', '--agent', agentId, '--workspace', workspacePath, '--prompt-file', promptFile, '--out', outDir];
-  if (model) args.push('--model', model);
-  if (task.inputs?.commandTemplate) args.push('--command-template', task.inputs.commandTemplate);
-  if (task.inputs?.flattenPrompt === true) args.push('--flatten');
-  else if (task.inputs?.flattenPrompt === false) args.push('--no-flatten');
+  const runArgs = ['run', '--agent', agentId, '--workspace', workspacePath, '--prompt-file', promptFile, '--out', outDir];
+  if (model) runArgs.push('--model', model);
+  if (task.inputs?.commandTemplate) runArgs.push('--command-template', task.inputs.commandTemplate);
+  if (task.inputs?.flattenPrompt === true) runArgs.push('--flatten');
+  else if (task.inputs?.flattenPrompt === false) runArgs.push('--no-flatten');
+
+  const inv = resolveAgentRunSpawn(cfg, runArgs);
+  logStream.write(`agent-run: ${inv.script}\n`);
 
   // cwd = output dir (always exists). --workspace = project the agent edits.
   // detached: true so a Stop/kill from the board can terminate the whole process
   // group (agent-run + the agent CLI it spawns), not just orphan the agent behind it.
   // Unattended agent-run is wrapped in the sandbox (bwrap/docker) when enabled —
   // autonomy without isolation is refused when sandbox.requireForAutonomous is true.
-  let spawnBin = agentRunBin;
-  let spawnArgs = args;
+  let spawnBin = inv.bin;
+  let spawnArgs = inv.args;
   let sandboxMeta = { backend: 'none', skipped: true };
   try {
     const wrapped = sandbox.wrapCommand(cfg, {
-      command: agentRunBin,
-      args,
+      command: inv.bin,
+      args: inv.args,
       cwd: outDir,
       rwPaths: [workspacePath, outDir, cfg.dataDir],
       env,
@@ -219,7 +221,7 @@ ${acceptanceBlock}${progressUpdatesBlock(cfg, task)}`;
   child.on('error', (err) => {
     logStream.write(`\nSPAWN ERROR: ${err.message}\n`);
     if (err.code === 'ENOENT') {
-      logStream.write('Hint: agent-run or sandbox backend not found on PATH. Set agent.agentRunBin / install bubblewrap.\n');
+      logStream.write('Hint: bundled agent-run missing or sandbox backend not found. Reinstall omnishpilot / install bubblewrap.\n');
     }
   });
 

@@ -187,8 +187,6 @@ app.get('/api/agents', (_req, res) => {
 app.post('/api/agents/preview', (req, res) => {
   const { inputs = {}, instructions = {}, title, summary, agentId, commandTemplate, flattenPrompt, model } = req.body || {};
   const taskLike = { inputs, instructions, title, summary };
-  const bin = agents.resolveAgentRunBin(cfg);
-
   const noopLog = { write: () => {} };
   const { path: workspacePath } = agent.resolveWorkspace(taskLike, cfg, noopLog);
   const fullPrompt = `${agent.agentPromptPath(taskLike)}
@@ -211,7 +209,8 @@ For images: save PNG files into the output directory and write a brief result.md
     else if (flattenPrompt === false) args.push('--no-flatten');
 
     const { spawnSync } = require('child_process');
-    const r = spawnSync(bin, args, { encoding: 'utf8', timeout: 15000 });
+    const inv = agents.resolveAgentRunSpawn(cfg, args);
+    const r = spawnSync(inv.bin, inv.args, { encoding: 'utf8', timeout: 15000 });
     if (r.status !== 0) {
       return res.status(400).json({ error: (r.stderr || r.stdout || 'preview failed').trim() });
     }

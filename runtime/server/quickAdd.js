@@ -8,7 +8,7 @@ const templates = require('./templates');
 const agents = require('./agents');
 const ledger = require('./ledger');
 const suggest = require('./suggest');
-const { resolveAgentRunBin } = require('./resolve-bin');
+const { resolveAgentRunSpawn } = require('./resolve-bin');
 
 const NEAR_DUPLICATE_THRESHOLD = 0.6;
 
@@ -40,8 +40,8 @@ function findReusableSpec(text, workspace) {
   return best ? best.spec : null;
 }
 
-function agentRunBin(cfg) {
-  return resolveAgentRunBin(cfg);
+function agentRunInvocation(cfg, argv) {
+  return resolveAgentRunSpawn(cfg, argv);
 }
 
 function buildInterpreterPrompt(text, workspaceHint) {
@@ -148,7 +148,6 @@ function normalizeSpec(raw, fallbackText) {
 // next agent in the pool.
 function tryInterpretWith(agentId, clean, cleanWorkspace) {
   const cfg = loadConfig();
-  const bin = agentRunBin(cfg);
 
   const scratchDir = path.join(os.tmpdir(), `omnishpilot-quickadd-${randomUUID()}`);
   fs.mkdirSync(scratchDir, { recursive: true });
@@ -161,7 +160,10 @@ function tryInterpretWith(agentId, clean, cleanWorkspace) {
   const useWorkspace = (cleanWorkspace && fs.existsSync(cleanWorkspace)) ? cleanWorkspace : scratchDir;
 
   try {
-    const r = spawnSync(bin, ['run', '--agent', agentId, '--workspace', useWorkspace, '--prompt-file', promptFile, '--out', scratchDir], {
+    const inv = agentRunInvocation(cfg, [
+      'run', '--agent', agentId, '--workspace', useWorkspace, '--prompt-file', promptFile, '--out', scratchDir,
+    ]);
+    const r = spawnSync(inv.bin, inv.args, {
       encoding: 'utf8',
       timeout: 45000,
     });
