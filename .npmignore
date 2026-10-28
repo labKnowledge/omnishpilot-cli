@@ -1,0 +1,8 @@
+# Belt-and-suspenders: package.json "files" already whitelists publish contents.
+# Keep internal notes and VCS noise out of any accidental broad pack.
+docs/reality-check*.md
+**/reality-check-value.md
+.git
+.gitignore
+*.tgz
+node_modules/

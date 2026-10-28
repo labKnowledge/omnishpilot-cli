@@ -1,0 +1,202 @@
+{
+  "_guide": {
+    "title": "OmnishPilot job import",
+    "version": "2.0",
+    "philosophy": "Keep imports short. Point the agent at skills and a workspace — let it scan the codebase, draft scripts, and produce assets. You review in the UI before anything runs.",
+    "required": [
+      "templateId",
+      "title"
+    ],
+    "optional": [
+      "inputs",
+      "instructions",
+      "schedule",
+      "runMode",
+      "workspaceId",
+      "summary",
+      "skills"
+    ],
+    "skills": [
+      {
+        "id": "lean-venture-analyst",
+        "when": "Marketing copy, hooks, positioning, social posts, voiceover scripts, thumbnail briefs",
+        "note": "Stress-test claims and write convincing, evidence-backed copy — not generic AI fluff."
+      },
+      {
+        "id": "remotion-ads",
+        "when": "Remotion video ads / social reels / explainers",
+        "note": "Require Kokoro voice am_michael for all VO (not ElevenLabs)."
+      },
+      {
+        "id": "google-workspace-ad-skill",
+        "when": "Polished 15s social ad squares"
+      },
+      {
+        "id": "frontend-design",
+        "when": "Built-in image generation briefs and visual direction"
+      },
+      {
+        "id": "content-strategy",
+        "when": "Series planning and editorial calendars"
+      },
+      {
+        "id": "coding-agent",
+        "when": "Implementation tasks in a repo"
+      }
+    ],
+    "agentWorkflow": [
+      "Set inputs.workspace to a real folder path on the server.",
+      "List skills in instructions.agentPrompt (or a dedicated skills array on the job).",
+      "Tell the agent to scan the codebase for context before writing copy or code.",
+      "For video/social jobs: use lean-venture-analyst for script + post copy; use remotion-ads for rendering with Kokoro am_michael voiceover (not ElevenLabs).",
+      "Leave instruction sections empty when the agent should generate them from inputs + skills."
+    ],
+    "scheduleTypes": [
+      "manual",
+      "now",
+      "once",
+      "interval",
+      "hourly",
+      "daily",
+      "weekly",
+      "monthly"
+    ],
+    "templateIds": [
+      "social-video",
+      "agent-task",
+      "deliver-content",
+      "research",
+      "code-task"
+    ],
+    "docs": "Full template reference: GET /api/meta — or use the in-app job wizard."
+  },
+  "jobs": [
+    {
+      "_example": "Agent job — lean copy + codebase scan (manual start)",
+      "templateId": "agent-task",
+      "title": "Draft launch post from repo context",
+      "summary": "Research + copy",
+      "runMode": "supervised",
+      "schedule": {
+        "type": "manual"
+      },
+      "skills": [
+        "lean-venture-analyst",
+        "content-strategy"
+      ],
+      "inputs": {
+        "title": "Draft launch post from repo context",
+        "workspace": "/path/to/your/project",
+        "goal": "Scan the codebase and README. Write a convincing launch post and 3 hook variants for social."
+      },
+      "instructions": {
+        "agentPrompt": "Use skills: lean-venture-analyst, content-strategy.\n\n1. Scan the workspace (README, package.json, key docs) for facts.\n2. Apply lean-venture-analyst for positioning and hooks.\n3. Output result.md with post copy + hooks — no invented metrics.",
+        "deliverables": "result.md",
+        "constraints": "Public facts only. Cite file paths you used."
+      }
+    },
+    {
+      "_example": "Remotion video — agent writes script; pipeline renders",
+      "templateId": "social-video",
+      "title": "Product explainer — 45s",
+      "runMode": "supervised",
+      "schedule": {
+        "type": "manual"
+      },
+      "skills": [
+        "lean-venture-analyst",
+        "remotion-ads"
+      ],
+      "inputs": {
+        "title": "Product explainer — 45s",
+        "hook": "Open on the pain point the product solves",
+        "cta": "yourapp.com"
+      },
+      "instructions": {
+        "voScript": "",
+        "beats": "",
+        "creativeBrief": "Scan workspace for UI screenshots and architecture. Agent fills beats + Remotion direction via remotion-ads.",
+        "socialPost": "",
+        "imagePrompt": "",
+        "verifyNotes": "Script cites real product facts. VO is Kokoro am_michael only — never ElevenLabs."
+      }
+    },
+    {
+      "_example": "Daily recurring digest",
+      "templateId": "agent-task",
+      "title": "Morning repo digest",
+      "runMode": "agent",
+      "schedule": {
+        "type": "daily",
+        "hour": 8,
+        "minute": 30,
+        "timezone": "America/Denver"
+      },
+      "skills": [
+        "coding-agent"
+      ],
+      "inputs": {
+        "title": "Morning repo digest",
+        "workspace": "/path/to/your/project",
+        "goal": "Summarize overnight commits, open PRs, and failing CI. Flag blockers."
+      }
+    },
+    {
+      "_example": "One-shot research",
+      "templateId": "research",
+      "title": "Competitive landscape scan",
+      "schedule": {
+        "type": "now"
+      },
+      "runMode": "agent",
+      "skills": [
+        "lean-venture-analyst"
+      ],
+      "inputs": {
+        "title": "Competitive landscape scan",
+        "questions": "Who are the top 5 alternatives? How do they position?",
+        "sources": "Public web, product sites, G2"
+      },
+      "instructions": {
+        "agentPrompt": "Use lean-venture-analyst for sharp, honest positioning analysis. No fluff."
+      }
+    },
+    {
+      "_example": "Code change with verification",
+      "templateId": "code-task",
+      "title": "Add health check endpoint",
+      "runMode": "supervised",
+      "schedule": {
+        "type": "manual"
+      },
+      "skills": [
+        "coding-agent"
+      ],
+      "inputs": {
+        "title": "Add health check endpoint",
+        "workspace": "/path/to/your/project",
+        "goal": "Add GET /api/health returning { ok: true, version }. Match existing patterns."
+      },
+      "instructions": {
+        "acceptance": "Endpoint returns 200. Tests pass."
+      }
+    },
+    {
+      "_example": "Weekly report",
+      "templateId": "research",
+      "title": "Weekly metrics summary",
+      "runMode": "agent",
+      "schedule": {
+        "type": "weekly",
+        "dayOfWeek": 5,
+        "hour": 16,
+        "minute": 0,
+        "timezone": "America/Denver"
+      },
+      "inputs": {
+        "title": "Weekly metrics summary",
+        "questions": "What changed week over week? Any anomalies?"
+      }
+    }
+  ]
+}

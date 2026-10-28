@@ -1,0 +1,228 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"/>
+  <meta name="theme-color" content="#020814"/>
+  <meta name="description" content="OmnishPilot schedules agent jobs, tracks runs, and notifies you when work finishes."/>
+  <title>OmnishPilot</title>
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml"/>
+  <link rel="icon" href="/favicon.ico" sizes="32x32"/>
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png" sizes="180x180"/>
+  <link rel="manifest" href="/site.webmanifest"/>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+  <link href="https://fonts.googleapis.com/css2?family=Exo+2:wght@400;500;600;700&family=Orbitron:wght@500;600;700&family=Share+Tech+Mono&display=swap" rel="stylesheet"/>
+  <link rel="stylesheet" href="/styles.css"/>
+</head>
+<body>
+  <div class="app-shell" id="app-shell">
+    <span class="bracket tl" aria-hidden="true"></span>
+    <span class="bracket tr" aria-hidden="true"></span>
+    <span class="bracket bl" aria-hidden="true"></span>
+    <span class="bracket br" aria-hidden="true"></span>
+
+    <header class="hud-strip" role="banner">
+      <div class="hud-strip__brand">
+        <span class="brand-mark-frame" aria-hidden="true">
+          <img class="brand-mark" src="/logo.svg" alt="" width="30" height="30"/>
+        </span>
+        <div class="brand-text">
+          <p class="brand-code">SYS · OMNISHPILOT</p>
+          <h1 class="brand-title">Agent control</h1>
+        </div>
+      </div>
+      <div class="hud-strip__meta">
+        <span class="chip" id="chip-run" hidden>IDLE</span>
+        <button type="button" class="btn btn-filled sm strip-command" id="btn-console-toggle" aria-expanded="true" aria-controls="command-theater">› Command</button>
+      </div>
+      <div class="hud-strip__page">
+        <p class="page-code" id="page-code">DECK.01</p>
+        <p class="page-title" id="page-title">Deck</p>
+      </div>
+    </header>
+
+    <div class="shell-body" id="shell-body">
+      <!-- Primary: always ready to type on Deck; overlay on other tabs -->
+      <div class="command-theater is-docked" id="command-theater" role="region" aria-labelledby="command-theater-title" aria-hidden="false">
+        <button type="button" class="command-theater__veil" id="command-theater-veil" tabindex="-1" aria-label="Close command" hidden></button>
+        <div class="command-theater__stage">
+          <div class="command-theater__iris" aria-hidden="true"></div>
+          <div class="command-theater__scan" aria-hidden="true"></div>
+          <p class="command-theater__code"><span id="chip-clock">00:00:00</span> · CMD.ENGAGE</p>
+          <h2 class="command-theater__title" id="command-theater-title">Command</h2>
+          <p class="command-theater__lead">What to run, and when</p>
+          <form class="command-console" id="command-console" action="#" autocomplete="off">
+            <span class="command-console__prompt" aria-hidden="true">›</span>
+            <input type="text" id="quick-add-input" class="command-console__input" name="command" placeholder="e.g. research competitors every Monday 9am" autocomplete="off" enterkeyhint="go" autocapitalize="sentences"/>
+            <button type="button" class="icon-btn" id="quick-add-folder-toggle" title="Attach folder" aria-label="Attach folder">⬚</button>
+            <button type="submit" class="btn btn-filled" id="quick-add-go">Engage</button>
+          </form>
+          <div class="quick-add-folder-row hidden" id="quick-add-folder-row"></div>
+          <div id="quick-add-result"></div>
+          <div class="command-theater__foot">
+            <button type="button" class="btn btn-text sm" id="btn-command-wizard">Guided arm</button>
+            <span class="command-theater__hint" id="command-theater-hint">Enter · engage</span>
+            <button type="button" class="btn btn-outlined sm" id="btn-console-stow" hidden>Close</button>
+          </div>
+        </div>
+      </div>
+
+      <main id="main" class="main-content" role="main"></main>
+    </div>
+
+    <nav class="dock" aria-label="Primary navigation">
+      <button type="button" class="dock__item active" data-tab="home"><span class="dock__code">01</span><span>Deck</span></button>
+      <button type="button" class="dock__item" data-tab="calendar"><span class="dock__code">02</span><span>Cal</span></button>
+      <button type="button" class="dock__item" data-tab="timeline"><span class="dock__code">03</span><span>Timeline</span></button>
+      <button type="button" class="dock__item" data-tab="compose"><span class="dock__code">04</span><span>Compose</span></button>
+      <button type="button" class="dock__item" data-tab="settings"><span class="dock__code">05</span><span>Config</span></button>
+      <button type="button" class="btn btn-filled dock__arm" id="btn-add-work">› Command</button>
+    </nav>
+  </div>
+
+  <!-- Hidden aliases so existing JS selectors keep working -->
+  <button type="button" class="hidden" id="btn-add-work-sidebar" aria-hidden="true"></button>
+  <button type="button" class="hidden" id="fab-add-work" aria-hidden="true"></button>
+
+  <div class="modal hidden" id="wizard-modal" role="dialog" aria-modal="true" aria-labelledby="wizard-title">
+    <div class="modal-backdrop" data-close></div>
+    <div class="modal-panel sheet">
+      <div class="sheet-handle" aria-hidden="true"></div>
+      <div class="modal-head">
+        <h2 id="wizard-title">New job</h2>
+        <button type="button" class="icon-btn" data-close aria-label="Close">×</button>
+      </div>
+      <div class="wizard-steps" id="wizard-steps" aria-hidden="true"></div>
+      <div class="modal-body" id="wizard-body"></div>
+      <div class="modal-foot">
+        <button type="button" class="btn btn-text" id="wizard-back" hidden>Back</button>
+        <button type="button" class="btn btn-filled" id="wizard-next">Continue</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal hidden" id="task-modal" role="dialog" aria-modal="true" aria-labelledby="task-modal-title">
+    <div class="modal-backdrop" data-close></div>
+    <div class="modal-panel sheet wide">
+      <div class="sheet-handle" aria-hidden="true"></div>
+      <div class="modal-head">
+        <h2 id="task-modal-title">Job</h2>
+        <button type="button" class="icon-btn" data-close aria-label="Close">×</button>
+      </div>
+      <div class="modal-body" id="task-modal-body"></div>
+    </div>
+  </div>
+
+  <div class="modal hidden" id="import-modal" role="dialog" aria-modal="true" aria-labelledby="import-title">
+    <div class="modal-backdrop" data-close></div>
+    <div class="modal-panel sheet wide">
+      <div class="sheet-handle" aria-hidden="true"></div>
+      <div class="modal-head">
+        <h2 id="import-title">Import jobs</h2>
+        <button type="button" class="icon-btn" data-close aria-label="Close">×</button>
+      </div>
+      <div class="modal-body" id="import-modal-body"></div>
+      <div class="modal-foot">
+        <button type="button" class="btn btn-text" data-close>Cancel</button>
+        <button type="button" class="btn btn-filled" id="import-submit">Import</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal hidden" id="new-campaign-modal" role="dialog" aria-modal="true" aria-labelledby="new-campaign-title">
+    <div class="modal-backdrop" data-close></div>
+    <div class="modal-panel sheet wide">
+      <div class="sheet-handle" aria-hidden="true"></div>
+      <div class="modal-head">
+        <h2 id="new-campaign-title">New campaign</h2>
+        <button type="button" class="icon-btn" data-close aria-label="Close">×</button>
+      </div>
+      <div class="modal-body" id="new-campaign-body"></div>
+      <div class="modal-foot">
+        <button type="button" class="btn btn-text" data-close>Cancel</button>
+        <button type="button" class="btn btn-filled" id="new-campaign-submit">Create campaign</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal hidden" id="cal-quick-add-modal" role="dialog" aria-modal="true" aria-labelledby="cal-quick-add-title">
+    <div class="modal-backdrop" data-close></div>
+    <div class="modal-panel sheet">
+      <div class="sheet-handle" aria-hidden="true"></div>
+      <div class="modal-head">
+        <h2 id="cal-quick-add-title">Schedule job</h2>
+        <button type="button" class="icon-btn" data-close aria-label="Close">×</button>
+      </div>
+      <div class="modal-body">
+        <p class="section-lead" id="cal-quick-add-when">Pick a time on the calendar timeline.</p>
+        <div class="field">
+          <label for="cal-quick-add-title-input">Job title</label>
+          <input type="text" id="cal-quick-add-title-input" placeholder="Weekly report, deploy check…" autocomplete="off"/>
+        </div>
+        <div class="field">
+          <label for="cal-quick-add-template">Job type</label>
+          <select id="cal-quick-add-template"></select>
+        </div>
+        <div class="field">
+          <label>How should it run?</label>
+          <div class="mode-chips" id="cal-quick-add-modes"></div>
+        </div>
+      </div>
+      <div class="modal-foot">
+        <button type="button" class="btn btn-text" data-close>Cancel</button>
+        <button type="button" class="btn btn-filled" id="cal-quick-add-submit">Create job</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal hidden" id="path-picker-modal" role="dialog" aria-modal="true" aria-labelledby="path-picker-title">
+    <div class="modal-backdrop" data-close-picker></div>
+    <div class="modal-panel sheet">
+      <div class="sheet-handle" aria-hidden="true"></div>
+      <div class="modal-head">
+        <h2 id="path-picker-title">Choose a folder</h2>
+        <button type="button" class="icon-btn" data-close-picker aria-label="Close">×</button>
+      </div>
+      <div class="modal-body">
+        <div class="field">
+          <label for="path-picker-input">Path</label>
+          <input type="text" id="path-picker-input" autocomplete="off"/>
+        </div>
+        <div class="path-crumbs" id="path-picker-crumbs"></div>
+        <div class="path-list" id="path-picker-list"></div>
+      </div>
+      <div class="modal-foot">
+        <button type="button" class="btn btn-text" id="path-picker-new-folder" style="margin-right: auto;">New folder</button>
+        <button type="button" class="btn btn-text" data-close-picker>Cancel</button>
+        <button type="button" class="btn btn-filled" id="path-picker-select">Use this folder</button>
+      </div>
+    </div>
+  </div>
+  <div class="modal hidden" id="new-folder-modal" role="dialog" aria-modal="true" aria-labelledby="new-folder-title">
+    <div class="modal-backdrop" data-close-new-folder></div>
+    <div class="modal-panel sheet">
+      <div class="sheet-handle" aria-hidden="true"></div>
+      <div class="modal-head">
+        <h2 id="new-folder-title">Create new folder</h2>
+        <button type="button" class="icon-btn" data-close-new-folder aria-label="Close">×</button>
+      </div>
+      <div class="modal-body">
+        <div class="field">
+          <label for="new-folder-input">Folder name</label>
+          <input type="text" id="new-folder-input" autocomplete="off" placeholder="e.g. my-folder"/>
+        </div>
+      </div>
+      <div class="modal-foot">
+        <button type="button" class="btn btn-text" data-close-new-folder>Cancel</button>
+        <button type="button" class="btn btn-filled" id="new-folder-submit">Create</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="toast-root" class="toast-root" aria-live="polite"></div>
+  <nav id="cal-context-menu" class="cal-context-menu hidden" role="menu" aria-label="Timeline actions"></nav>
+  <script src="/app.js" defer></script>
+</body>
+</html>
+

@@ -1,0 +1,7 @@
+node_modules/
+*.tgz
+.DS_Store
+
+# Internal strategy notes — never publish to GitHub or npm
+docs/reality-check*.md
+**/reality-check-value.md

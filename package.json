@@ -1,0 +1,65 @@
+{
+  "name": "omnishpilot",
+  "version": "0.0.1",
+  "description": "OmnishPilot CLI — free autonomy harness: sandboxed unattended agent jobs (Linux, macOS, Windows)",
+  "license": "MIT",
+  "bin": {
+    "omnishpilot": "bin/omnishpilot.js",
+    "agentboard": "bin/omnishpilot.js"
+  },
+  "main": "lib/index.js",
+  "files": [
+    "bin",
+    "lib",
+    "runtime",
+    "scripts",
+    "omnishpilot.config.example.json",
+    "README.md",
+    "LICENSE"
+  ],
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
+  },
+  "scripts": {
+    "sync": "node scripts/sync-runtime.js",
+    "prepack": "node scripts/sync-runtime.js",
+    "prepare": "node scripts/sync-runtime.js",
+    "start": "node bin/omnishpilot.js start",
+    "doctor": "node bin/omnishpilot.js doctor",
+    "check": "node --check bin/omnishpilot.js && node --check lib/index.js && node --check lib/daemon.js && node --check lib/service.js && node --check lib/watch.js && node --check lib/platform.js && node --check ../server/sandbox.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "os": [
+    "darwin",
+    "linux",
+    "win32"
+  ],
+  "cpu": [
+    "x64",
+    "arm64"
+  ],
+  "dependencies": {
+    "express": "^4.21.2"
+  },
+  "keywords": [
+    "omnish",
+    "agent",
+    "sandbox",
+    "autonomy",
+    "scheduler",
+    "cli",
+    "automation",
+    "cross-platform"
+  ],
+  "homepage": "https://github.com/labKnowledge/omnishpilot-cli#readme",
+  "bugs": {
+    "url": "https://github.com/labKnowledge/omnishpilot-cli/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/labKnowledge/omnishpilot-cli.git"
+  }
+}

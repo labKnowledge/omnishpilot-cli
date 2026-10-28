@@ -1,0 +1,87 @@
+{
+  "_guide": {
+    "title": "OmnishPilot campaign plan (days.json)",
+    "version": "1.0",
+    "philosophy": "One entry per campaign day. This replaces the whole plan for a workspace — every day you want on the board must be listed.",
+    "required": [
+      "day",
+      "title"
+    ],
+    "optional": [
+      "pillar",
+      "duration_target",
+      "vo_script",
+      "social_post",
+      "image_prompt",
+      "cta",
+      "beats",
+      "creative"
+    ],
+    "fieldNotes": {
+      "day": "Positive integer, unique across the plan. Determines schedule (campaign day N).",
+      "title": "Short episode title shown on the board and in the video.",
+      "pillar": "Content pillar / theme label, e.g. \"Pain\", \"Proof\", \"CTA\".",
+      "duration_target": "Free text, e.g. \"44s · 4 beats\" — a target for the render, not enforced.",
+      "vo_script": "Full voiceover script. Leave blank for the agent to draft.",
+      "social_post": "Ready-to-post social copy. Leave blank for the agent to draft.",
+      "image_prompt": "Thumbnail image brief. Leave blank for the agent to draft.",
+      "cta": "Call to action shown at the end, e.g. \"yourapp.com/signup\".",
+      "beats": "Array of { caption, icon, animation } scene beats — the on-screen scene list.",
+      "creative": "Optional freeform object with any extra creative direction (visual_lens, palette, hero_icons, etc.) — passed through as-is."
+    },
+    "docs": "Import with \"Full campaign plan\" in the Import jobs modal, or edit day-by-day in the Compose tab."
+  },
+  "days": [
+    {
+      "day": 1,
+      "title": "The Problem Nobody Names",
+      "pillar": "Pain",
+      "duration_target": "44s · 4 beats",
+      "vo_script": "Everyone ships the happy path.\nNobody tests what breaks it.\n\nThat gap is where churn lives.\n\nOur tool finds it before your users do.\nFree to try. yourapp.com/audit",
+      "beats": [
+        {
+          "caption": "HAPPY PATH ONLY",
+          "icon": "laptop",
+          "animation": ""
+        },
+        {
+          "caption": "EDGE CASE HITS",
+          "icon": "spinner",
+          "animation": ""
+        },
+        {
+          "caption": "USER LEAVES",
+          "icon": "phone",
+          "animation": ""
+        },
+        {
+          "caption": "WE CATCH IT FIRST",
+          "icon": "magnifying-glass",
+          "animation": ""
+        }
+      ],
+      "cta": "yourapp.com/audit",
+      "social_post": "Your happy path works great.\nIt is the other 20% that churns users.\n\nFree audit: yourapp.com/audit",
+      "image_prompt": "9:16 split screen, smooth app on left, cracked/error app on right, dark background, cinematic",
+      "creative": {
+        "palette": "amber",
+        "hero_icons": [
+          "laptop",
+          "spinner",
+          "phone"
+        ]
+      }
+    },
+    {
+      "day": 2,
+      "title": "Week 1 Recap",
+      "pillar": "Proof",
+      "duration_target": "30s · 3 beats",
+      "vo_script": "",
+      "beats": [],
+      "cta": "yourapp.com/audit",
+      "social_post": "",
+      "image_prompt": ""
+    }
+  ]
+}
