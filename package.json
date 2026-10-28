@@ -27,7 +27,7 @@
     "prepare": "node scripts/sync-runtime.js",
     "start": "node bin/omnishpilot.js start",
     "doctor": "node bin/omnishpilot.js doctor",
-    "check": "node --check bin/omnishpilot.js && node --check lib/index.js && node --check lib/daemon.js && node --check lib/service.js && node --check lib/watch.js && node --check lib/platform.js && node --check ../server/sandbox.js"
+    "check": "node --check bin/omnishpilot.js && node --check lib/index.js && node --check lib/daemon.js && node --check lib/service.js && node --check lib/watch.js && node --check lib/platform.js && node --check runtime/server/sandbox.js"
   },
   "engines": {
     "node": ">=18"
