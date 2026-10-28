@@ -134,6 +134,7 @@ function isPublicPath(reqPath) {
 
 module.exports = {
   COOKIE_NAME,
+  DEFAULT_PASSWORD,
   authConfig,
   createSessionToken,
   verifySessionToken,

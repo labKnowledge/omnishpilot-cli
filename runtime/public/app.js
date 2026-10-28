@@ -2788,19 +2788,19 @@ async function saveSettings() {
 }
 
 const TAB_TITLES = {
-  home: 'Deck',
+  home: 'Jobs',
   calendar: 'Calendar',
   timeline: 'Timeline',
   compose: 'Compose',
-  settings: 'Config',
+  settings: 'Settings',
 };
 
 const TAB_CODES = {
-  home: 'DECK.01',
-  calendar: 'CAL.02',
-  timeline: 'TIM.03',
-  compose: 'CMP.04',
-  settings: 'CFG.05',
+  home: 'Overview',
+  calendar: 'Schedule',
+  timeline: 'History',
+  compose: 'Write',
+  settings: 'Settings',
 };
 
 function bootMain() {

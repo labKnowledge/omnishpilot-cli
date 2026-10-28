@@ -3,763 +3,167 @@
 <head>
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"/>
-  <meta name="theme-color" content="#020814"/>
-  <title>OmnishPilot — Gate</title>
+  <meta name="theme-color" content="#f4f6f8"/>
+  <title>OmnishPilot — Sign in</title>
   <link rel="icon" href="/favicon.svg" type="image/svg+xml"/>
   <link rel="apple-touch-icon" href="/apple-touch-icon.png" sizes="180x180"/>
-  <link rel="manifest" href="/site.webmanifest"/>
   <link rel="preconnect" href="https://fonts.googleapis.com"/>
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
-  <link href="https://fonts.googleapis.com/css2?family=Exo+2:wght@400;500;600&family=Orbitron:wght@500;600;700&family=Share+Tech+Mono&display=swap" rel="stylesheet"/>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet"/>
   <style>
     :root {
-      --bg: #020814;
-      --surface: #071018;
-      --text: #d8f6ff;
-      --muted: #6a8a9a;
-      --accent: #00e5ff;
-      --accent-2: #ff8a2b;
-      --ok: #3dff9a;
-      --fail: #ff3355;
-      --line: rgba(0, 229, 255, 0.35);
-      --font-d: "Orbitron", sans-serif;
-      --font-b: "Exo 2", sans-serif;
-      --font-m: "Share Tech Mono", monospace;
+      --bg: #f4f6f8;
+      --surface: #ffffff;
+      --text: #1a2332;
+      --muted: #5c6b7a;
+      --line: #d7dee7;
+      --accent: #1f6feb;
+      --fail: #c62828;
+      --ok: #2e7d32;
+      --font: "IBM Plex Sans", system-ui, sans-serif;
+      --mono: "IBM Plex Mono", ui-monospace, monospace;
     }
     * { box-sizing: border-box; margin: 0; }
     html, body { height: 100%; }
     body {
-      font-family: var(--font-b);
+      font-family: var(--font);
       background: var(--bg);
       color: var(--text);
-      overflow: hidden;
-    }
-    body::before {
-      content: "";
-      position: fixed;
-      inset: 0;
-      pointer-events: none;
-      opacity: 0.05;
-      background-image:
-        linear-gradient(rgba(0,229,255,.5) 1px, transparent 1px),
-        linear-gradient(90deg, rgba(0,229,255,.5) 1px, transparent 1px);
-      background-size: 40px 40px;
-      z-index: 0;
-    }
-
-    .stage {
-      position: relative;
-      z-index: 1;
-      height: 100dvh;
       display: grid;
       place-items: center;
-      padding: var(--bezel, 12px);
+      padding: 24px;
     }
-
-    /* —— Sealed hatch (login) —— */
-    .hatch {
-      position: relative;
-      width: min(920px, 100%);
-      height: min(620px, calc(100dvh - 24px));
-      border: 1px solid rgba(0, 229, 255, 0.45);
-      background:
-        radial-gradient(ellipse 60% 50% at 50% 40%, rgba(0,229,255,.12), transparent 60%),
-        linear-gradient(165deg, rgba(0,229,255,.08), transparent 40%),
-        linear-gradient(180deg, #122a3a 0%, #071018 42%, #030a12 100%);
-      overflow: hidden;
-      box-shadow:
-        inset 1px 1px 0 rgba(180, 240, 255, 0.2),
-        inset -1px -1px 0 rgba(0, 0, 0, 0.7),
-        inset 0 0 80px rgba(0, 0, 0, 0.5),
-        0 0 0 1px rgba(0, 0, 0, 0.85),
-        0 0 0 3px rgba(0, 229, 255, 0.1),
-        0 18px 50px rgba(0, 0, 0, 0.65),
-        0 0 60px rgba(0, 229, 255, 0.14);
-    }
-    .hatch::before {
-      content: "";
-      position: absolute;
-      inset: 4px;
-      border: 1px solid rgba(0, 229, 255, 0.12);
-      pointer-events: none;
-      z-index: 2;
-      box-shadow: inset 0 0 40px rgba(0, 0, 0, 0.35);
-    }
-    .hatch .corner { position: absolute; width: 18px; height: 18px; border-color: var(--accent); border-style: solid; z-index: 5; pointer-events: none; }
-    .hatch .corner.tl { top: 8px; left: 8px; border-width: 2px 0 0 2px; }
-    .hatch .corner.tr { top: 8px; right: 8px; border-width: 2px 2px 0 0; }
-    .hatch .corner.bl { bottom: 8px; left: 8px; border-width: 0 0 2px 2px; }
-    .hatch .corner.br { bottom: 8px; right: 8px; border-width: 0 2px 2px 0; }
-
-    .hatch__door {
-      position: absolute;
-      inset: 0;
-      z-index: 4;
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      pointer-events: none;
-    }
-    .hatch__door-panel {
-      background:
-        linear-gradient(180deg, rgba(180,240,255,.12) 0%, transparent 18%),
-        linear-gradient(180deg, rgba(0,229,255,.08), transparent 40%),
-        repeating-linear-gradient(90deg, transparent, transparent 28px, rgba(0,229,255,.08) 28px, rgba(0,229,255,.08) 29px),
-        linear-gradient(180deg, #0e2232 0%, #040c16 55%, #020810 100%);
+    .card {
+      width: min(400px, 100%);
+      background: var(--surface);
       border: 1px solid var(--line);
-      box-shadow:
-        inset 1px 1px 0 rgba(180, 240, 255, 0.18),
-        inset -2px -2px 0 rgba(0, 0, 0, 0.55),
-        inset 0 0 40px rgba(0, 0, 0, 0.4);
-      transition: transform 1.1s cubic-bezier(0.77, 0, 0.175, 1);
-    }
-    .hatch__door-panel.left { border-right: 1px solid var(--line); transform-origin: left center; }
-    .hatch__door-panel.right { border-left: 1px solid var(--line); transform-origin: right center; }
-    .hatch.is-opening .hatch__door-panel.left { transform: translateX(-105%); }
-    .hatch.is-opening .hatch__door-panel.right { transform: translateX(105%); }
-
-    .hatch__scan {
-      position: absolute;
-      left: 0; right: 0;
-      height: 2px;
-      top: -2px;
-      background: linear-gradient(90deg, transparent, var(--accent), transparent);
-      box-shadow: 0 0 16px var(--accent);
-      opacity: 0;
-      z-index: 6;
-      pointer-events: none;
-    }
-    .hatch.is-opening .hatch__scan {
-      opacity: 1;
-      animation: scan-down 1.1s cubic-bezier(0.23, 1, 0.32, 1) forwards;
-    }
-    @keyframes scan-down {
-      from { top: 0; }
-      to { top: 100%; }
-    }
-
-    .gate-form {
-      position: relative;
-      z-index: 3;
-      width: min(380px, calc(100% - 48px));
-      margin: 0 auto;
+      border-radius: 12px;
       padding: 28px 24px;
-      border: 1px solid rgba(255,138,43,.5);
-      background:
-        linear-gradient(165deg, rgba(255,138,43,.16) 0%, transparent 40%),
-        linear-gradient(180deg, #1e160c 0%, #0c1018 45%, #071018 100%);
-      clip-path: polygon(0 0, calc(100% - 14px) 0, 100% 14px, 100% 100%, 14px 100%, 0 calc(100% - 14px));
-      box-shadow:
-        inset 1px 1px 0 rgba(255, 220, 160, 0.22),
-        inset -1px -1px 0 rgba(0, 0, 0, 0.65),
-        inset 0 0 28px rgba(0, 0, 0, 0.35),
-        0 4px 0 rgba(0, 0, 0, 0.4),
-        0 14px 36px rgba(0, 0, 0, 0.55),
-        0 0 28px rgba(255,138,43,.28);
-      filter: drop-shadow(0 8px 18px rgba(0, 0, 0, 0.5));
-      transition: opacity 0.35s ease, transform 0.35s ease;
+      box-shadow: 0 8px 24px rgba(26, 35, 50, 0.06);
     }
-    .hatch.is-opening .gate-form {
-      opacity: 0;
-      transform: scale(0.96);
-      pointer-events: none;
-    }
-
-    .code {
-      font-family: var(--font-m);
-      font-size: 0.65rem;
-      letter-spacing: 0.16em;
-      color: var(--accent);
-      text-transform: uppercase;
-      margin-bottom: 8px;
-    }
-    .gate-brand {
+    .brand {
       display: flex;
       align-items: center;
       gap: 12px;
-      margin-bottom: 14px;
+      margin-bottom: 20px;
     }
-    .brand-mark-frame {
-      position: relative;
-      flex: 0 0 48px;
-      width: 48px;
-      height: 48px;
-      display: grid;
-      place-items: center;
-      border: 1px solid rgba(0, 229, 255, 0.55);
-      background:
-        linear-gradient(165deg, rgba(0,229,255,.14), transparent 40%),
-        linear-gradient(180deg, #122a3a 0%, #071018 100%);
-      clip-path: polygon(0 0, calc(100% - 8px) 0, 100% 8px, 100% 100%, 8px 100%, 0 calc(100% - 8px));
-      box-shadow:
-        inset 1px 1px 0 rgba(180, 240, 255, 0.28),
-        inset -1px -1px 0 rgba(0, 0, 0, 0.65),
-        0 4px 0 rgba(0, 0, 0, 0.35),
-        0 0 18px rgba(0, 229, 255, 0.35);
-      animation: mark-pulse 2.8s ease-in-out infinite;
-    }
-    .brand-mark-frame::before {
-      content: "";
-      position: absolute;
-      inset: -3px;
-      border: 1px solid transparent;
-      border-top-color: rgba(0, 229, 255, 0.55);
-      border-right-color: rgba(255, 138, 43, 0.4);
-      clip-path: polygon(0 0, calc(100% - 8px) 0, 100% 8px, 100% 100%, 8px 100%, 0 calc(100% - 8px));
-      animation: mark-trace 3.5s linear infinite;
-      pointer-events: none;
-    }
-    .brand-mark {
-      width: 34px;
-      height: 34px;
-      display: block;
-      object-fit: contain;
-      object-position: center;
-      animation: mark-breathe 3.2s ease-in-out infinite;
-    }
-    .gate-brand > div {
-      display: flex;
-      flex-direction: column;
-      justify-content: center;
-      gap: 2px;
-      min-width: 0;
-      line-height: 1.15;
-    }
-    .gate-brand .code { margin-bottom: 0; }
-    @keyframes mark-trace {
-      0% { opacity: 0.25; }
-      50% { opacity: 0.9; }
-      100% { opacity: 0.25; }
-    }
-    .gate-form h1 {
-      font-family: var(--font-d);
-      font-size: 1.15rem;
-      letter-spacing: 0.12em;
-      text-transform: uppercase;
-      color: var(--accent-2);
-      margin: 0;
-      line-height: 1.15;
-    }
-    .gate-form > p { color: var(--muted); font-size: 0.95rem; margin-bottom: 18px; line-height: 1.4; }
-    @keyframes mark-pulse {
-      0%, 100% { box-shadow: 0 0 12px rgba(0, 229, 255, 0.2); }
-      50% { box-shadow: 0 0 24px rgba(0, 229, 255, 0.5); }
-    }
-    @keyframes mark-breathe {
-      0%, 100% { transform: scale(1); filter: drop-shadow(0 0 4px rgba(0, 229, 255, 0.35)); }
-      50% { transform: scale(1.05); filter: drop-shadow(0 0 12px rgba(0, 229, 255, 0.7)); }
-    }
+    .brand img { width: 36px; height: 36px; }
+    .brand h1 { font-size: 1.15rem; font-weight: 600; letter-spacing: -0.02em; }
+    .brand p { font-size: 0.85rem; color: var(--muted); margin-top: 2px; }
     label {
       display: block;
-      font-family: var(--font-m);
-      font-size: 0.68rem;
-      letter-spacing: 0.12em;
-      text-transform: uppercase;
+      font-size: 0.8rem;
+      font-weight: 500;
       color: var(--muted);
       margin-bottom: 6px;
     }
-    input {
+    input[type="password"] {
       width: 100%;
-      padding: 12px 14px;
-      border: 1px solid rgba(0, 229, 255, 0.3);
-      background: linear-gradient(180deg, #040a12, #071018);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 10px 12px;
+      font: 500 0.95rem/1.3 var(--mono);
       color: var(--text);
-      font: 500 1rem/1.2 var(--font-m);
-      box-shadow:
-        inset 2px 3px 10px rgba(0, 0, 0, 0.75),
-        inset -1px -1px 0 rgba(0, 229, 255, 0.1);
+      background: #fff;
     }
     input:focus {
       outline: none;
       border-color: var(--accent);
-      box-shadow:
-        inset 2px 3px 10px rgba(0, 0, 0, 0.75),
-        0 0 0 1px var(--accent),
-        0 0 16px rgba(0, 229, 255, 0.35);
+      box-shadow: 0 0 0 3px rgba(31, 111, 235, 0.15);
     }
-    .btn {
-      width: 100%;
-      margin-top: 14px;
-      padding: 12px 16px;
-      border: 1px solid transparent;
-      cursor: pointer;
-      font: 600 0.85rem/1 var(--font-b);
-      letter-spacing: 0.14em;
-      text-transform: uppercase;
-      clip-path: polygon(0 0, calc(100% - 10px) 0, 100% 10px, 100% 100%, 10px 100%, 0 calc(100% - 10px));
-    }
-    .btn-arm {
-      border-color: rgba(255, 220, 160, 0.4);
-      background: linear-gradient(180deg, #ffb060 0%, #ff8a2b 42%, #c45a10 100%);
-      color: #120800;
-      box-shadow:
-        inset 0 1px 0 rgba(255, 255, 255, 0.3),
-        inset 0 -2px 0 rgba(0, 0, 0, 0.35),
-        0 2px 0 rgba(0, 0, 0, 0.45),
-        0 8px 20px rgba(0, 0, 0, 0.4),
-        0 0 22px rgba(255,138,43,.4);
-      text-shadow: 0 1px 0 rgba(255, 255, 255, 0.25);
-    }
-    .btn-arm:disabled { opacity: 0.6; cursor: wait; }
-    .btn-cyan {
-      color: var(--accent);
-      border: 1px solid var(--line);
-      background:
-        linear-gradient(180deg, rgba(0,229,255,.22) 0%, rgba(0,229,255,.05) 45%, #061018 100%);
-      box-shadow:
-        inset 1px 1px 0 rgba(180, 240, 255, 0.18),
-        inset -1px -1px 0 rgba(0, 0, 0, 0.55),
-        0 0 18px rgba(0,229,255,.2);
-    }
-    .error {
-      margin-top: 10px;
-      min-height: 1.2rem;
-      color: var(--fail);
-      font-family: var(--font-m);
-      font-size: 0.75rem;
-    }
-
-    /* —— Landing briefing (revealed under hatch) —— */
-    .briefing {
-      position: absolute;
-      inset: 0;
-      z-index: 2;
-      display: grid;
-      grid-template-rows: auto 1fr auto;
-      align-content: start;
-      padding: 28px 32px 24px;
-      opacity: 0.35;
-      filter: blur(2px);
-      transform: scale(0.98);
-      transition: opacity 0.5s ease 0.35s, filter 0.5s ease 0.35s, transform 0.5s ease 0.35s;
-    }
-    .hatch.is-open .briefing,
-    .hatch.is-opening .briefing {
-      opacity: 1;
-      filter: none;
-      transform: none;
-    }
-    .briefing__head {
-      display: flex;
-      justify-content: space-between;
-      gap: 16px;
-      flex-wrap: wrap;
-      align-items: flex-start;
-      border-bottom: 1px solid var(--line);
-      padding-bottom: 14px;
-      margin-bottom: 18px;
-    }
-    .briefing__head--start h2 {
-      font-size: clamp(1.4rem, 4vw, 1.85rem);
-      letter-spacing: 0.1em;
-      text-shadow: 0 0 20px rgba(255, 138, 43, 0.35);
-    }
-    .start-panel {
-      max-width: 520px;
-    }
-    .fui-disclose {
-      margin-top: 14px;
-      border: 1px solid rgba(0, 229, 255, 0.22);
-      background: rgba(2, 8, 20, 0.45);
-    }
-    .fui-disclose > summary {
-      list-style: none;
-      cursor: pointer;
-      padding: 10px 12px;
-      font-family: var(--font-m);
-      font-size: 0.68rem;
-      letter-spacing: 0.14em;
-      text-transform: uppercase;
-      color: var(--accent);
-    }
-    .fui-disclose > summary::-webkit-details-marker { display: none; }
-    .fui-disclose[open] > summary { border-bottom: 1px solid rgba(0,229,255,.15); }
-    .fui-disclose .info-list { padding: 8px 12px 12px; }
-    .briefing__head h2 {
-      font-family: var(--font-d);
-      font-size: clamp(1.1rem, 2.5vw, 1.6rem);
-      letter-spacing: 0.14em;
-      text-transform: uppercase;
-      color: var(--accent-2);
-    }
-    .briefing__head .sub {
-      font-family: var(--font-m);
-      font-size: 0.7rem;
-      letter-spacing: 0.1em;
-      color: var(--accent);
-      margin-top: 6px;
-    }
-    .status-row { display: flex; flex-wrap: wrap; gap: 6px; }
-    .chip {
-      font-family: var(--font-m);
-      font-size: 0.62rem;
-      letter-spacing: 0.1em;
-      text-transform: uppercase;
-      padding: 4px 8px;
-      border: 1px solid var(--line);
-      color: var(--accent);
-      background: linear-gradient(180deg, rgba(0,229,255,.28), rgba(0,229,255,.06) 50%, #061018);
-      clip-path: polygon(0 0, calc(100% - 6px) 0, 100% 6px, 100% 100%, 6px 100%, 0 calc(100% - 6px));
-      box-shadow:
-        inset 1px 1px 0 rgba(255, 255, 255, 0.12),
-        inset -1px -1px 0 rgba(0, 0, 0, 0.55),
-        0 2px 4px rgba(0, 0, 0, 0.4);
-      text-shadow: 0 1px 0 rgba(0, 0, 0, 0.6);
-    }
-    .chip.ok {
-      color: var(--ok);
-      border-color: rgba(61,255,154,.4);
-      background: linear-gradient(180deg, rgba(61,255,154,.28), rgba(61,255,154,.06) 50%, #061810);
-      animation: chip-ok 1.8s ease-in-out infinite;
-    }
-    .chip.arm {
-      color: var(--accent-2);
-      border-color: rgba(255,138,43,.45);
-      background: linear-gradient(180deg, rgba(255,138,43,.3), rgba(255,138,43,.08) 50%, #181006);
-      animation: chip-arm 2.2s ease-in-out infinite;
-    }
-
-    .briefing__grid {
-      display: grid;
-      grid-template-columns: 1.1fr 1fr;
-      gap: 14px;
-      min-height: 0;
-      overflow: auto;
-    }
-    @media (max-width: 700px) {
-      .briefing__grid { grid-template-columns: 1fr; }
-      .hatch { height: auto; min-height: min(620px, calc(100dvh - 24px)); }
-    }
-
-    .info-panel {
-      border: 1px solid rgba(0, 229, 255, 0.35);
-      background:
-        linear-gradient(165deg, rgba(0,229,255,.1), transparent 40%),
-        linear-gradient(180deg, #122a3a 0%, #071018 50%, #040a12 100%);
-      padding: 14px 16px;
-      clip-path: polygon(0 0, calc(100% - 12px) 0, 100% 12px, 100% 100%, 0 100%);
-      box-shadow:
-        inset 1px 1px 0 rgba(180, 240, 255, 0.18),
-        inset -1px -1px 0 rgba(0, 0, 0, 0.6),
-        0 4px 0 rgba(0, 0, 0, 0.35),
-        0 10px 24px rgba(0, 0, 0, 0.45);
-      animation: panel-rise 0.55s cubic-bezier(0.23, 1, 0.32, 1) both;
-    }
-    .briefing__grid .info-panel:nth-child(2) { animation-delay: 0.12s; }
-    @keyframes panel-rise {
-      from { opacity: 0; transform: translateY(14px); }
-      to { opacity: 1; transform: none; }
-    }
-    @keyframes chip-ok {
-      0%, 100% { box-shadow: 0 0 0 rgba(61,255,154,0); }
-      50% { box-shadow: 0 0 12px rgba(61,255,154,0.35); }
-    }
-    @keyframes chip-arm {
-      0%, 100% { box-shadow: 0 0 0 rgba(255,138,43,0); }
-      50% { box-shadow: 0 0 14px rgba(255,138,43,0.4); }
-    }
-    .info-panel h3 {
-      font-family: var(--font-m);
-      font-size: 0.68rem;
-      letter-spacing: 0.16em;
-      text-transform: uppercase;
-      color: var(--accent);
-      margin-bottom: 10px;
-    }
-    .info-panel p { color: var(--muted); font-size: 0.92rem; line-height: 1.45; margin-bottom: 10px; }
-    .info-list { list-style: none; display: grid; gap: 8px; }
-    .info-list li {
-      display: grid;
-      grid-template-columns: 42px 1fr;
-      gap: 10px;
-      align-items: start;
-      padding: 8px 0;
-      border-bottom: 1px solid rgba(0,229,255,.12);
-    }
-    .info-list .n {
-      font-family: var(--font-m);
-      font-size: 0.7rem;
-      color: var(--accent-2);
-      letter-spacing: 0.08em;
-    }
-    .info-list strong {
-      display: block;
-      font-size: 0.95rem;
-      letter-spacing: 0.02em;
-      margin-bottom: 2px;
-    }
-    .info-list span { color: var(--muted); font-size: 0.82rem; }
-
-    .type-line {
-      font-family: var(--font-m);
-      font-size: 0.85rem;
-      color: var(--accent);
-      min-height: 1.4em;
-      white-space: pre-wrap;
-    }
-    .type-line::after {
-      content: "▌";
-      animation: blink 1s step-end infinite;
-      margin-left: 2px;
-    }
-    .hatch.is-open .type-line::after { display: none; }
-    @keyframes blink { 50% { opacity: 0; } }
-
-    .briefing__foot {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      gap: 12px;
-      flex-wrap: wrap;
+    button {
       margin-top: 16px;
+      width: 100%;
+      border: 0;
+      border-radius: 8px;
+      padding: 11px 14px;
+      font: 600 0.95rem/1.2 var(--font);
+      color: #fff;
+      background: var(--accent);
+      cursor: pointer;
+    }
+    button:hover { filter: brightness(1.05); }
+    button:disabled { opacity: 0.6; cursor: wait; }
+    .msg {
+      margin-top: 12px;
+      font-size: 0.85rem;
+      min-height: 1.2em;
+    }
+    .msg.err { color: var(--fail); }
+    .msg.ok { color: var(--ok); }
+    .hint {
+      margin-top: 18px;
       padding-top: 14px;
       border-top: 1px solid var(--line);
-    }
-    .briefing__foot .btn { width: auto; min-width: 180px; }
-    .briefing__foot .hint {
-      font-family: var(--font-m);
-      font-size: 0.68rem;
+      font-size: 0.78rem;
       color: var(--muted);
-      letter-spacing: 0.08em;
+      line-height: 1.45;
     }
-
-    .iris {
-      position: absolute;
-      inset: 18%;
-      border: 1px solid var(--line);
-      border-radius: 50%;
-      box-shadow: inset 0 0 40px rgba(0,229,255,.15), 0 0 30px rgba(0,229,255,.12);
-      pointer-events: none;
-      z-index: 1;
-      opacity: 0.5;
-      animation: iris-pulse 4s ease-in-out infinite;
-    }
-    .iris::before {
-      content: "";
-      position: absolute;
-      inset: 12%;
-      border: 1px dashed rgba(0,229,255,.25);
-      border-radius: 50%;
-      animation: iris-spin 18s linear infinite;
-    }
-    @keyframes iris-pulse {
-      0%, 100% { opacity: 0.35; transform: scale(1); }
-      50% { opacity: 0.65; transform: scale(1.03); }
-    }
-    @keyframes iris-spin { to { transform: rotate(360deg); } }
-    .corner {
-      animation: corner-glow 2.4s ease-in-out infinite;
-    }
-    .corner.tr, .corner.bl { animation-delay: 0.6s; }
-    @keyframes corner-glow {
-      0%, 100% { opacity: 0.55; filter: drop-shadow(0 0 0 transparent); }
-      50% { opacity: 1; filter: drop-shadow(0 0 6px var(--accent)); }
-    }
-    .btn-arm { transition: transform 0.15s ease, box-shadow 0.2s ease, filter 0.2s ease; }
-    .btn-arm:hover:not(:disabled) {
-      filter: brightness(1.08);
-      box-shadow: 0 0 30px rgba(255,138,43,.55);
-      transform: translateY(-1px);
-    }
-
-    /* When already authenticated, skip form — show open briefing */
-    .hatch.is-open .hatch__door { display: none; }
-    .hatch.is-open .gate-form { display: none; }
-
-    @media (prefers-reduced-motion: reduce) {
-      .hatch__door-panel, .briefing, .gate-form, .hatch__scan,
-      .iris, .iris::before, .corner, .brand-mark-frame, .brand-mark-frame::before,
-      .brand-mark, .info-panel, .chip.ok, .chip.arm { transition: none !important; animation: none !important; }
-      .hatch.is-opening .hatch__door-panel.left,
-      .hatch.is-opening .hatch__door-panel.right { transform: none; }
-      .hatch.is-opening .hatch__door { display: none; }
-      .type-line::after { display: none; }
+    .hint code {
+      font-family: var(--mono);
+      font-size: 0.76rem;
+      background: #eef2f6;
+      padding: 1px 5px;
+      border-radius: 4px;
     }
   </style>
 </head>
 <body>
-  <div class="stage">
-    <div class="hatch" id="hatch" data-state="sealed">
-      <span class="corner tl"></span><span class="corner tr"></span>
-      <span class="corner bl"></span><span class="corner br"></span>
-      <div class="iris" aria-hidden="true"></div>
-      <div class="hatch__scan" aria-hidden="true"></div>
-
-      <div class="hatch__door" aria-hidden="true">
-        <div class="hatch__door-panel left"></div>
-        <div class="hatch__door-panel right"></div>
+  <main class="card">
+    <div class="brand">
+      <img src="/logo.svg" alt="" width="36" height="36"/>
+      <div>
+        <h1>OmnishPilot</h1>
+        <p>Sign in to the control plane</p>
       </div>
-
-      <form class="gate-form" id="login-form">
-        <div class="gate-brand">
-          <span class="brand-mark-frame" aria-hidden="true">
-            <img class="brand-mark" src="/logo.svg" alt="" width="34" height="34"/>
-          </span>
-          <div>
-            <p class="code">AUTH.01 · SEALED</p>
-            <h1>OmnishPilot</h1>
-          </div>
-        </div>
-        <p>Control plane sealed. Present the access key to open the briefing deck.</p>
-        <label for="password">Access key</label>
-        <input id="password" name="password" type="password" autocomplete="current-password" required autofocus/>
-        <button type="submit" class="btn btn-arm" id="submit-btn">Open hatch</button>
-        <div class="error" id="error" role="alert" aria-live="polite"></div>
-      </form>
-
-      <section class="briefing" id="briefing" aria-label="Mission briefing" aria-hidden="true">
-        <header class="briefing__head briefing__head--start">
-          <div>
-            <p class="code">BRF.01 · START NOW</p>
-            <h2>You're clear</h2>
-            <p class="sub" id="brief-clock">CONTROL PLANE · STANDBY</p>
-          </div>
-          <span class="chip ok" id="chip-auth">AUTH PENDING</span>
-        </header>
-
-        <article class="info-panel start-panel">
-          <h3>Mission</h3>
-          <p class="type-line" id="type-line" aria-live="polite"></p>
-          <details class="fui-disclose" id="intel-details">
-            <summary>What you can do</summary>
-            <ul class="info-list" id="intel-list">
-              <li>
-                <span class="n">01</span>
-                <div>
-                  <strong>Arm a job</strong>
-                  <span>What to run, and when — from the deck or command line.</span>
-                </div>
-              </li>
-              <li>
-                <span class="n">02</span>
-                <div>
-                  <strong>Watch live runs</strong>
-                  <span>Open instruments only when you need queue, radar, or telemetry.</span>
-                </div>
-              </li>
-              <li>
-                <span class="n">03</span>
-                <div>
-                  <strong>Get notified</strong>
-                  <span>Omnish signals on start, finish, and fail.</span>
-                </div>
-              </li>
-            </ul>
-          </details>
-        </article>
-
-        <footer class="briefing__foot">
-          <p class="hint" id="brief-hint">HATCH SEALED — AWAITING KEY</p>
-          <button type="button" class="btn btn-arm" id="enter-deck" hidden>Enter deck</button>
-        </footer>
-      </section>
     </div>
-  </div>
-
+    <form id="login-form" autocomplete="current-password">
+      <label for="password">Password</label>
+      <input id="password" name="password" type="password" required autofocus placeholder="Enter password"/>
+      <button type="submit" id="submit">Sign in</button>
+      <p class="msg" id="msg" role="status"></p>
+    </form>
+    <p class="hint">
+      Forgot or never set a password? On this machine run:<br/>
+      <code>omnishpilot password set 'your-secret'</code><br/>
+      Then <code>omnishpilot restart</code>
+    </p>
+  </main>
   <script>
+    const form = document.getElementById('login-form');
+    const input = document.getElementById('password');
+    const msg = document.getElementById('msg');
+    const btn = document.getElementById('submit');
     const params = new URLSearchParams(location.search);
     const next = params.get('next') || '/';
-    const hatch = document.getElementById('hatch');
-    const form = document.getElementById('login-form');
-    const briefing = document.getElementById('briefing');
-    const typeLine = document.getElementById('type-line');
-    const enterBtn = document.getElementById('enter-deck');
-    const chipAuth = document.getElementById('chip-auth');
-    const briefHint = document.getElementById('brief-hint');
-    const briefClock = document.getElementById('brief-clock');
-    const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
-
-    const BRIEF_TEXT = 'Schedule agent jobs. Track runs. Get notified when work finishes.';
-
-    function tickClock() {
-      const now = new Date();
-      briefClock.textContent = 'CONTROL PLANE · ' + now.toLocaleTimeString([], { hour12: false });
-    }
-    tickClock();
-    setInterval(tickClock, 1000);
-
-    function typewriter(text, el, done) {
-      if (reduceMotion) {
-        el.textContent = text;
-        done?.();
-        return;
-      }
-      el.textContent = '';
-      let i = 0;
-      const id = setInterval(() => {
-        el.textContent = text.slice(0, ++i);
-        if (i >= text.length) {
-          clearInterval(id);
-          done?.();
-        }
-      }, 22);
-    }
-
-    function goDeck() {
-      let dest = next.startsWith('/') ? next : '/';
-      try {
-        const u = new URL(dest, location.origin);
-        if (u.pathname === '/' || u.pathname.endsWith('/index.html') || u.pathname === '') {
-          u.searchParams.set('boot', '1');
-        }
-        location.replace(u.pathname + u.search + u.hash);
-      } catch {
-        location.replace('/?boot=1');
-      }
-    }
-
-    /** One step after key: hatch flash → command ready on deck */
-    function openAndEnter() {
-      form.hidden = true;
-      briefing.setAttribute('aria-hidden', 'false');
-      chipAuth.textContent = 'AUTH OK';
-      chipAuth.classList.add('ok');
-      briefHint.textContent = 'ENTERING DECK…';
-      enterBtn.hidden = false;
-      typeLine.textContent = BRIEF_TEXT;
-      if (reduceMotion) {
-        goDeck();
-        return;
-      }
-      hatch.classList.add('is-opening');
-      setTimeout(goDeck, 720);
-    }
-
-    enterBtn.addEventListener('click', goDeck);
-
-    async function checkAlreadyIn() {
-      try {
-        const r = await fetch('/api/auth/status');
-        const j = await r.json();
-        if (j.authenticated) goDeck();
-      } catch { /* sealed */ }
-    }
 
     form.addEventListener('submit', async (e) => {
       e.preventDefault();
-      const btn = document.getElementById('submit-btn');
-      const err = document.getElementById('error');
+      msg.textContent = '';
+      msg.className = 'msg';
       btn.disabled = true;
-      err.textContent = '';
       try {
         const r = await fetch('/api/auth/login', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ password: document.getElementById('password').value }),
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ password: input.value }),
         });
-        const j = await r.json().catch(() => ({}));
+        const data = await r.json().catch(() => ({}));
         if (!r.ok) {
-          err.textContent = j.error === 'invalid_password' ? 'Access denied — hatch remains sealed' : (j.error || 'Unlock failed');
-          btn.disabled = false;
+          msg.textContent = data.error === 'invalid_password' ? 'Incorrect password.' : (data.error || 'Sign-in failed');
+          msg.classList.add('err');
           return;
         }
-        openAndEnter();
-      } catch {
-        err.textContent = 'Control plane unreachable';
+        msg.textContent = 'Signed in.';
+        msg.classList.add('ok');
+        location.href = next;
+      } catch (err) {
+        msg.textContent = err.message || 'Network error';
+        msg.classList.add('err');
+      } finally {
         btn.disabled = false;
       }
     });
-
-    checkAlreadyIn();
   </script>
 </body>
 </html>

@@ -96,8 +96,47 @@ function loadConfig() {
   return cfg;
 }
 
+function configFilePath(root = ROOT) {
+  return path.join(root, 'omnishpilot.config.json');
+}
+
+/** Deep-merge patch into the writable omnishpilot.config.json (creates if missing). */
+function updateConfig(patch, { root } = {}) {
+  const targetRoot = root || ROOT;
+  ensureHomeScaffold(targetRoot);
+  const cfgPath = configFilePath(targetRoot);
+  let current = {};
+  if (fs.existsSync(cfgPath)) {
+    try {
+      current = JSON.parse(fs.readFileSync(cfgPath, 'utf8'));
+    } catch {
+      current = {};
+    }
+  }
+  const merged = deepMerge(current, patch || {});
+  // Never persist internal resolve fields
+  delete merged._root;
+  delete merged._packageRoot;
+  fs.writeFileSync(cfgPath, JSON.stringify(merged, null, 2) + '\n');
+  return loadConfig();
+}
+
+function deepMerge(base, patch) {
+  const out = { ...base };
+  for (const [k, v] of Object.entries(patch || {})) {
+    if (v && typeof v === 'object' && !Array.isArray(v) && typeof base[k] === 'object' && base[k] && !Array.isArray(base[k])) {
+      out[k] = deepMerge(base[k], v);
+    } else {
+      out[k] = v;
+    }
+  }
+  return out;
+}
+
 module.exports = {
   loadConfig,
+  updateConfig,
+  configFilePath,
   ROOT,
   PACKAGE_ROOT,
   defaultHome,

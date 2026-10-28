@@ -94,11 +94,16 @@ omnishpilot watch                # live dashboard
 omnishpilot watch <job-id>       # follow a job log
 omnishpilot watch --log          # follow daemon log
 omnishpilot add "research competitor pricing into a one-pager"
-# → agent-task, scheduled once at now+5m (deterministic; CLI does not LLM-interpret)
-omnishpilot add --workspace ~/proj --now "fix the auth redirect"
+# → agent-task, once at now+5m (deterministic; no LLM interpret)
+omnishpilot add --workspace ~/proj --now --follow "fix the auth redirect"
+omnishpilot add --daily 09:00 "triage overnight CI"
+omnishpilot progress <id> --json
+omnishpilot follow <id>
+omnishpilot password set 'your-secret'   # set UI password from CLI
 omnishpilot dashboard
 omnishpilot stop
 ```
+
 
 API commands **auto-start** the daemon when it is not running. Disable with `--no-autostart` or `OMNISHPILOT_NO_AUTOSTART=1`.
 
