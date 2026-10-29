@@ -16,7 +16,14 @@
     "hangIdleMinutes": 12,
     "hangHardMinutes": 45,
     "hangCheckIntervalMs": 30000,
-    "jobTimeoutMinutes": 240
+    "jobTimeoutMinutes": 240,
+    "keepAwake": true,
+    "keepAwakeMinutes": 15
+  },
+  "budget": {
+    "dailyAgentMinutes": 0,
+    "monthlyUsd": 0,
+    "warnAtPercent": 80
   },
   "scheduler": {
     "defaultTimezone": "America/Denver",

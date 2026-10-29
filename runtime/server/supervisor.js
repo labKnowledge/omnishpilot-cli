@@ -5,31 +5,24 @@ const omnish = require('./omnish');
 const registry = require('./connectors/registry');
 const procUtils = require('./proc-utils');
 const hang = require('./hang');
+const recovery = require('./recovery');
+const worker = require('./worker');
 const { loadConfig } = require('./config');
 
 async function checkRunningTasks() {
-  const running = store.runningTasks();
-  for (const task of running) {
-    const ex = task.execution;
-    if (!ex?.pid) continue;
-    try {
-      process.kill(ex.pid, 0);
-    } catch {
-      store.updateTask(task.id, {
-        status: 'scheduled',
-        execution: { ...ex, pid: null, error: 'Process died unexpectedly — supervisor will retry' },
-      });
-      await omnish.supervisorAlert(task, 'Task process stopped. Re-queued for retry.');
+  for (const task of store.runningTasks()) {
+    if (worker.isInFlight(task.id)) continue;
+    const pid = task.execution?.pid;
+    let alive = false;
+    if (pid) try { process.kill(pid, 0); alive = true; } catch { /* gone */ }
+    if (!alive) {
+      await worker.failTask(task.id, task, 'Process stopped while OmnishPilot was not watching it', store.getSettings(), { cause: 'restart' });
     }
   }
 }
 
-const LOG_NOISE = /^(===|workspace:|output:|prompt:|NOTE:|WARN:|sandbox:)/;
-
 function lastMeaningfulLogLine(logPath) {
-  const tail = store.tailLog(logPath, 40);
-  const lines = tail.split('\n').map((l) => l.trim()).filter((l) => l && !LOG_NOISE.test(l));
-  return lines.pop() || '';
+  return recovery.lastWords(store.tailLog(logPath, 40));
 }
 
 function refreshLogActivity(task) {
@@ -73,6 +66,7 @@ async function checkHangsAndTimeouts() {
       execution: {
         ...store.getTask(task.id).execution,
         [flag]: true,
+        killCause: health.action,
         error: reason,
       },
     });

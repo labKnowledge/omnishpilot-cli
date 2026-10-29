@@ -3,6 +3,7 @@ const path = require('path');
 const { randomUUID } = require('crypto');
 const { loadConfig } = require('./config');
 const ledger = require('./ledger');
+const { readJsonSafe, writeJsonAtomic } = require('./atomic');
 
 const FILES = {
   tasks: 'tasks.json',
@@ -30,20 +31,11 @@ function dataPath(name) {
 }
 
 function readJson(file, fallback) {
-  const p = dataPath(file);
-  if (!fs.existsSync(p)) return typeof fallback === 'function' ? fallback() : fallback;
-  try {
-    return JSON.parse(fs.readFileSync(p, 'utf8'));
-  } catch {
-    return typeof fallback === 'function' ? fallback() : fallback;
-  }
+  return readJsonSafe(dataPath(file), fallback);
 }
 
 function writeJson(file, data) {
-  const p = dataPath(file);
-  const tmp = p + '.tmp';
-  fs.writeFileSync(tmp, JSON.stringify(data, null, 2) + '\n');
-  fs.renameSync(tmp, p);
+  writeJsonAtomic(dataPath(file), data, { backup: true });
 }
 
 function listTasks(filter = {}) {
@@ -106,6 +98,7 @@ function createTask(spec) {
     },
     source: spec.source || 'user',
     sourceRef: spec.sourceRef || null,
+    deliveryId: spec.deliveryId || null,
     createdAt: now,
     updatedAt: now,
     completedAt: null,

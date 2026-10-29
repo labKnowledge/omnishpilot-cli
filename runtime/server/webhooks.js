@@ -103,16 +103,28 @@ function summarizeGeneric(body) {
   };
 }
 
-function createWebhookJob({ source, summary, body, cfg }) {
+/** Senders retry and redeliver an event with the same id, sometimes hours later. */
+const DELIVERY_HEADERS = ['x-github-delivery', 'linear-delivery', 'x-delivery-id', 'idempotency-key'];
+const DELIVERY_WINDOW_MS = 7 * 24 * 60 * 60 * 1000;
+
+function deliveryIdOf(req) {
+  for (const header of DELIVERY_HEADERS) {
+    const value = req.get?.(header);
+    if (value) return String(value).slice(0, 200);
+  }
+  return null;
+}
+
+function createWebhookJob({ source, summary, body, cfg, deliveryId = null }) {
   const templateId = body.templateId || cfg.webhooks?.defaultTemplateId || 'agent-task';
   const tpl = templates.getTemplate(templateId) || templates.getTemplate('agent-task');
   const workspaceId = body.workspaceId || ensureGenericWorkspace(cfg);
   const workspace = body.workspace || cfg.webhooks?.defaultWorkspace || cfg.agent?.defaultWorkspace || '';
 
-  // Deduplicate recent identical source refs within 10 minutes
-  const recent = store.listTasks().filter((t) => t.sourceRef === summary.ref && t.source === source);
-  const tenMinAgo = Date.now() - 10 * 60 * 1000;
-  const dup = recent.find((t) => new Date(t.createdAt).getTime() > tenMinAgo);
+  const fromSource = store.listTasks().filter((t) => t.source === source);
+  const since = (ms) => (t) => new Date(t.createdAt).getTime() > Date.now() - ms;
+  const dup = (deliveryId && fromSource.filter(since(DELIVERY_WINDOW_MS)).find((t) => t.deliveryId === deliveryId))
+    || fromSource.filter(since(10 * 60 * 1000)).find((t) => t.sourceRef === summary.ref);
   if (dup) {
     return { deduped: true, task: dup };
   }
@@ -145,6 +157,7 @@ function createWebhookJob({ source, summary, body, cfg }) {
     connector: tpl.connector,
     source,
     sourceRef: summary.ref,
+    deliveryId,
     maxAttempts: body.maxAttempts || 3,
   });
   return { deduped: false, task };
@@ -166,7 +179,7 @@ function mountWebhooks(app) {
     else summary = summarizeGeneric(body);
 
     try {
-      const result = createWebhookJob({ source: `webhook:${source}`, summary, body, cfg });
+      const result = createWebhookJob({ source: `webhook:${source}`, summary, body, cfg, deliveryId: deliveryIdOf(req) });
       return res.status(result.deduped ? 200 : 201).json({
         ok: true,
         deduped: result.deduped,
@@ -193,5 +206,6 @@ module.exports = {
   summarizeGithub,
   summarizeLinear,
   createWebhookJob,
+  deliveryIdOf,
   tokenOk,
 };

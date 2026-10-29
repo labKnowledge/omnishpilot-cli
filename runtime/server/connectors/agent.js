@@ -7,6 +7,7 @@ const agents = require('../agents');
 const store = require('../store');
 const sandbox = require('../sandbox');
 const acceptance = require('../acceptance');
+const recovery = require('../recovery');
 const { resolveAgentRunSpawn } = require('../resolve-bin');
 
 function parseEnvFile(filePath) {
@@ -123,7 +124,7 @@ Always write \`result.md\` in the output directory summarizing what changed and 
 Write \`result.md\` in the output directory summarizing what you did and where outputs are.
 `;
   const fullPrompt = `${agentPromptPath(task)}
-
+${recovery.retryNote(task.execution?.retryOf)}
 ## Output directory
 Save all deliverables here: ${outDir}
 

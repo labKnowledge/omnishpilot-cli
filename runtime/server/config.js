@@ -1,6 +1,7 @@
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
+const { writeJsonAtomic } = require('./atomic');
 
 const PACKAGE_ROOT = process.env.OMNISHPILOT_PACKAGE_ROOT
   ? path.resolve(process.env.OMNISHPILOT_PACKAGE_ROOT)
@@ -109,15 +110,16 @@ function updateConfig(patch, { root } = {}) {
   if (fs.existsSync(cfgPath)) {
     try {
       current = JSON.parse(fs.readFileSync(cfgPath, 'utf8'));
-    } catch {
-      current = {};
+    } catch (e) {
+      // Saving over a file people edit by hand would throw their settings away for one typo.
+      throw new Error(`${cfgPath} is not valid JSON (${e.message}); fix it before changing settings`);
     }
   }
   const merged = deepMerge(current, patch || {});
   // Never persist internal resolve fields
   delete merged._root;
   delete merged._packageRoot;
-  fs.writeFileSync(cfgPath, JSON.stringify(merged, null, 2) + '\n');
+  writeJsonAtomic(cfgPath, merged, { backup: true });
   return loadConfig();
 }
 

@@ -36,6 +36,15 @@ Research + implementation snapshot of the local autonomy harness.
 - **Morning pack** — gate + artifacts + diff summary via Omnish
 - Quick-add plain language → job spec
 - Workload templates (social video, research, code change, terminal command)
+- **Failure triage** — a crash or flaky run is retried; a signed-out agent, missing command, approval prompt or hard timeout fails at once with the fix, told once per agent or job
+- **Retry context** — a retried agent is told the first run may have done part of the work, so it checks before redoing anything
+- **Recurring jobs survive a failure** — a nightly job that fails keeps its schedule; the same failure two nights running notifies once
+- **Crash-safe state** — tasks, settings and config are written atomically with fsync; a damaged `tasks.json` is set aside and restored from its last good copy
+- **Failure backoff** — a recurring job that keeps failing waits 15 minutes, then 30, doubling up to 4 hours, so a broken 5-minute job doesn't fail every 5 minutes
+- **Weekly health** — each recurring job shows "6 of 7 runs succeeded in the last 7 days" in `omnishpilot tasks`, `task <id>` and the web UI
+- **Keep awake** — the machine can't sleep while a job runs or is due within 15 minutes (`systemd-inhibit` on Linux, `caffeinate` on macOS, `SetThreadExecutionState` on Windows); the lock dies with the daemon
+- **Budget caps** — `omnishpilot budget --minutes 180 --usd 20`: agent minutes per day and reported spend per month, warning at 80%; agent jobs over a cap wait, terminal jobs still run
+- **Webhook redelivery** — an event redelivered with the same `X-GitHub-Delivery` / `Linear-Delivery` / `Idempotency-Key` within 7 days returns the job it already started
 
 ## Config surface (new)
 
@@ -46,8 +55,11 @@ Research + implementation snapshot of the local autonomy harness.
 "worker": {
   "hangIdleMinutes": 12,
   "hangHardMinutes": 45,
-  "jobTimeoutMinutes": 240
-}
+  "jobTimeoutMinutes": 240,
+  "keepAwake": true,
+  "keepAwakeMinutes": 15
+},
+"budget": { "dailyAgentMinutes": 180, "monthlyUsd": 20, "warnAtPercent": 80 }
 ```
 
 ## Webhooks

@@ -69,7 +69,8 @@ async function taskCompleted(task) {
 }
 
 async function taskFailed(task, error) {
-  return notify(`✗ ${task.title}`, `Failed: ${error}. Open OmnishPilot to retry or edit instructions.`);
+  const reason = String(error).replace(/[.\s]+$/, '');
+  return notify(`✗ ${task.title}`, `Failed: ${reason}. Open OmnishPilot to retry or edit instructions.`);
 }
 
 async function supervisorAlert(task, message) {

@@ -1,6 +1,7 @@
 const fs = require('fs');
 const path = require('path');
 const { loadConfig } = require('./config');
+const { writeJsonAtomic } = require('./atomic');
 
 // Derived, append-only projection of job lifecycle events, used only to power suggestions —
 // never a source of truth. tasks.json (store.js) remains authoritative; deleting this file
@@ -26,10 +27,7 @@ function readEvents() {
 }
 
 function writeEvents(events) {
-  const p = filePath();
-  const tmp = p + '.tmp';
-  fs.writeFileSync(tmp, JSON.stringify(events, null, 2) + '\n');
-  fs.renameSync(tmp, p);
+  writeJsonAtomic(filePath(), events);
 }
 
 function record(type, fields = {}) {
@@ -88,4 +86,20 @@ function bootstrapFromTasksIfEmpty() {
   writeEvents(events);
 }
 
-module.exports = { record, query, readEvents, bootstrapFromTasksIfEmpty };
+const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
+
+/** Each job's finished runs over the last 7 days: `{ ok, total }` by task id. */
+function weekOutcomes(now = Date.now()) {
+  const since = new Date(now - WEEK_MS).toISOString();
+  const byTask = new Map();
+  for (const e of readEvents()) {
+    if (e.ts < since || (e.type !== 'job_completed' && e.type !== 'job_failed')) continue;
+    const week = byTask.get(e.taskId) || { ok: 0, total: 0 };
+    week.total += 1;
+    if (e.type === 'job_completed') week.ok += 1;
+    byTask.set(e.taskId, week);
+  }
+  return byTask;
+}
+
+module.exports = { record, query, readEvents, bootstrapFromTasksIfEmpty, weekOutcomes };

@@ -224,8 +224,13 @@ function scheduleLabelForTask(t) {
   return t.scheduleLabel || formatScheduleLabel(t.schedule);
 }
 
+function weekSentence({ ok, total }) {
+  return `${ok} of ${total} run${total === 1 ? '' : 's'} succeeded in the last 7 days`;
+}
+
 function taskCard(t, extraClass = '') {
   const when = t.status === 'draft' ? 'Not scheduled yet' : scheduleLabelForTask(t);
+  const week = t.week ? ` · <span title="${esc(weekSentence(t.week))}">${t.week.ok}/${t.week.total} this week</span>` : '';
   const thumb = t.thumbUrl
     ? `<img class="task-card__thumb" src="${t.thumbUrl}" alt=""/>`
     : '';
@@ -245,7 +250,7 @@ function taskCard(t, extraClass = '') {
       ${thumb}
       <div style="min-width:0">
         <div class="task-title">${esc(t.title)}</div>
-        <div class="task-sub">${showWs ? esc(t.workspaceName) + ' · ' : ''}${esc(when)} · ${esc(runModeLabel(t.runMode))}${t.summary ? ' · ' + esc(t.summary) : ''}</div>
+        <div class="task-sub">${showWs ? esc(t.workspaceName) + ' · ' : ''}${esc(when)} · ${esc(runModeLabel(t.runMode))}${week}${t.summary ? ' · ' + esc(t.summary) : ''}</div>
       </div>
     </div>
     ${statusBadge(t.status)}
@@ -1730,7 +1735,7 @@ function renderTaskScheduleEditor(t) {
       </select>
       <div id="task-schedule-fields" style="margin-top:.5rem">${renderScheduleFields(sched, 'task-w')}</div>
       ${sched.runAt ? `<p class="hint" style="margin-top:.35rem">Next run: ${new Date(sched.runAt).toLocaleString()}</p>` : ''}
-      ${t.execution?.runCount ? `<p class="hint">Completed runs: ${t.execution.runCount}</p>` : ''}
+      ${t.week ? `<p class="hint">${esc(weekSentence(t.week))}</p>` : ''}
       <button class="btn btn-outlined sm" type="button" id="task-save-schedule" style="margin-top:.5rem">Save schedule</button>
     </div>`;
 }
@@ -2093,6 +2098,7 @@ async function openTask(id) {
   body.innerHTML = `
     <p style="margin-bottom:.75rem">${statusBadge(t.status)}${t.muted ? '<span class="badge muted" style="margin-left:.35rem">Muted</span>' : ''} <span style="color:var(--md-sys-color-on-surface-variant);margin-left:.5rem">${esc(shellJob ? 'Terminal' : runModeLabel(t.runMode))} · ${esc(scheduleLabelForTask(t))}</span></p>
     ${t.execution?.error ? `<div class="post-box is-error" style="margin-bottom:12px">${esc(t.execution.error)}</div>` : ''}
+    ${t.execution?.held && t.status === 'scheduled' ? `<p class="hint" style="margin-bottom:12px">${esc(t.execution.held)}</p>` : ''}
     ${t.summary ? `<p style="color:var(--md-sys-color-on-surface-variant);margin-bottom:.75rem">${esc(t.summary)}</p>` : ''}
     ${media}
     ${editable && (t.status === 'scheduled' || t.status === 'draft') ? renderTaskScheduleEditor(t) : ''}

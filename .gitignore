@@ -5,3 +5,4 @@ node_modules/
 # Internal strategy notes — never publish to GitHub or npm
 docs/reality-check*.md
 **/reality-check-value.md
+rnd/

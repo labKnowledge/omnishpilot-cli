@@ -14,7 +14,15 @@ const verifier = require('./verifier');
 const worktree = require('./worktree');
 const hang = require('./hang');
 const ids = require('./connectors/ids');
+const ledger = require('./ledger');
+const recovery = require('./recovery');
+const budget = require('./budget');
 const { loadConfig } = require('./config');
+
+const NOTICES_FILE = 'notices.json';
+const BUDGET_ALERTS_FILE = 'budget-alerts.json';
+/** Tasks this process is executing right now; the supervisor leaves them to their own waitChild. */
+const inFlight = new Set();
 
 function workspaceById(id) {
   return loadConfig().workspaces?.find((w) => w.id === id) || null;
@@ -60,6 +68,7 @@ function applyLimitFailover(task, updated, err, logPath) {
         ...updated.execution,
         pid: null,
         resolvedAgentId: null,
+        retryOf: { cause: 'exit', error: `agent "${failedAgentId}" hit its usage limit` },
         limitFailover: {
           from: failedAgentId,
           to: nextAgentId,
@@ -88,6 +97,7 @@ function applyLimitFailover(task, updated, err, logPath) {
     execution: {
       ...updated.execution,
       pid: null,
+      retryOf: { cause: 'exit', error: `agent "${failedAgentId}" hit its usage limit` },
       resumeAtReset: {
         resumeAt,
         failedAgentId,
@@ -125,6 +135,9 @@ async function completeSuccessfully(task, updated, {
     finishedAt: new Date().toISOString(),
     artifacts,
     error: null,
+    retryOf: null,
+    lastFailure: null,
+    failuresInRow: 0,
     acceptance: acceptanceResult
       ? {
           ok: acceptanceResult.ok,
@@ -151,6 +164,12 @@ async function completeSuccessfully(task, updated, {
       schedule: { ...schedule, type: scheduler.normalizeType(schedule.type), runAt: nextRunAt },
       execution: { ...executionPatch, lastFinishedAt: executionPatch.finishedAt, runCount, attempts: 0 },
     });
+    ledger.record('job_completed', {
+      taskId: task.id,
+      templateId: task.templateId,
+      workspaceId: task.workspaceId,
+      agentId: task.inputs?.agentId || null,
+    });
   } else {
     store.updateTask(task.id, {
       status: 'completed',
@@ -160,6 +179,10 @@ async function completeSuccessfully(task, updated, {
   }
 
   worktree.cleanupWorktree(worktreeMeta, { success: true });
+  store.writeJson(NOTICES_FILE, recovery.clearNotices(store.readJson(NOTICES_FILE, []), {
+    taskId: task.id,
+    agentId: updated.execution?.resolvedAgentId,
+  }));
 
   if (settings.notifyOnComplete || settings.deliveryOnComplete || settings.morningPack !== false) {
     await finishJob(task.id, settings, packExtra);
@@ -168,6 +191,15 @@ async function completeSuccessfully(task, updated, {
 }
 
 async function executeTask(task) {
+  inFlight.add(task.id);
+  try {
+    return await runOnce(task);
+  } finally {
+    inFlight.delete(task.id);
+  }
+}
+
+async function runOnce(task) {
   const ws = workspaceById(task.workspaceId);
   const logPath = store.taskLogPath(task.id);
   const settings = store.getSettings();
@@ -182,6 +214,11 @@ async function executeTask(task) {
       startedAt: new Date().toISOString(),
       logPath,
       error: null,
+      retryOf: null,
+      held: null,
+      killedForHang: false,
+      killedForTimeout: false,
+      killCause: null,
       lastLogAt: new Date().toISOString(),
       lastLogBytes: act.size,
     },
@@ -229,7 +266,7 @@ async function executeTask(task) {
   if (runner.spawnError) {
     runner.logStream?.end?.();
     const updated = store.getTask(task.id);
-    await failTask(task.id, updated, runner.spawnError, settings);
+    await failTask(task.id, updated, runner.spawnError, settings, { cause: 'spawn' });
     worktree.cleanupWorktree(worktreeMeta, { success: false });
     return store.getTask(task.id);
   }
@@ -247,12 +284,13 @@ async function executeTask(task) {
     const startErr = connector === ids.SHELL_COMMAND
       ? 'Failed to start command process'
       : 'Failed to start agent process';
-    await failTask(task.id, updated, startErr, settings);
+    await failTask(task.id, updated, startErr, settings, { cause: 'spawn' });
     worktree.cleanupWorktree(worktreeMeta, { success: false });
     return store.getTask(task.id);
   }
 
   const code = await waitChild(runner.child, runner.logStream, task.id);
+  if (connector !== ids.SHELL_COMMAND) recordAgentUsage(task.id, logPath);
   const updated = store.getTask(task.id);
   const outDir = runner.outDir || path.join(cfg.dataDir, 'outputs', task.id);
   const workspacePath = runTask.inputs?.workspace || worktreeMeta.path || '';
@@ -276,7 +314,7 @@ async function executeTask(task) {
         },
       });
       // Retry until green (uses attempts / maxAttempts)
-      await failTask(task.id, store.getTask(task.id), `Acceptance gate failed: ${report}`, settings);
+      await failTask(task.id, store.getTask(task.id), `Acceptance gate failed: ${report}`, settings, { cause: 'acceptance' });
       worktree.cleanupWorktree(worktreeMeta, { success: false });
       return store.getTask(task.id);
     }
@@ -297,6 +335,7 @@ async function executeTask(task) {
           store.getTask(task.id),
           `Verifier ${verifierResult.verdict}: ${verifierResult.detail}`,
           settings,
+          { cause: 'verifier' },
         );
         worktree.cleanupWorktree(worktreeMeta, { success: false });
         return store.getTask(task.id);
@@ -321,7 +360,8 @@ async function executeTask(task) {
   // Hang/timeout kill: prefer the supervisor's reason over a raw exit code.
   if (updated.execution?.killedForHang || updated.execution?.killedForTimeout) {
     const hangErr = updated.execution.error || 'Job stopped by hang/timeout supervisor';
-    await failTask(task.id, updated, hangErr, settings);
+    const cause = updated.execution.killedForTimeout ? 'timeout' : (updated.execution.killCause || 'hang');
+    await failTask(task.id, updated, hangErr, settings, { cause });
     worktree.cleanupWorktree(worktreeMeta, { success: false });
     return store.getTask(task.id);
   }
@@ -349,31 +389,119 @@ async function executeTask(task) {
     }
   }
 
-  await failTask(task.id, updated, err, settings);
+  await failTask(task.id, updated, err, settings, { cause: code === -1 ? 'spawn' : 'exit', exitCode: code });
   worktree.cleanupWorktree(worktreeMeta, { success: false });
   return store.getTask(task.id);
 }
 
-async function failTask(taskId, updated, err, settings) {
+function recordAgentUsage(taskId, logPath) {
+  const ex = store.getTask(taskId).execution;
+  const minutes = Math.max(0, (Date.now() - new Date(ex.startedAt).getTime()) / 60000);
+  const usage = { minutes: Math.round(minutes * 10) / 10, ...budget.usageFromLog(store.tailLog(logPath, 200)) };
+  store.updateTask(taskId, { execution: { usage } });
+  ledger.record('agent_usage', { taskId, agentId: ex.resolvedAgentId || null, ...usage });
+}
+
+function isShellJob(task) {
+  return (task.execution?.connector || templates.getTemplate(task.templateId)?.connector) === ids.SHELL_COMMAND;
+}
+
+/** Agent jobs wait while a budget cap is reached; terminal jobs never do. Returns the due jobs that may start. */
+async function applyBudget(due) {
+  const now = new Date();
+  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
+  const state = budget.budgetState(loadConfig(), ledger.query({ type: 'agent_usage', since: monthStart }), store.runningTasks(), now);
+  const { alert, marks } = budget.takeBudgetAlert(store.readJson(BUDGET_ALERTS_FILE, {}), state);
+  if (alert) {
+    store.writeJson(BUDGET_ALERTS_FILE, marks);
+    await omnish.notify(alert.title, alert.body);
+  }
+  const held = budget.heldReason(state);
+  if (!held) return due;
+  for (const t of due) {
+    if (!isShellJob(t) && t.execution?.held !== held) store.updateTask(t.id, { execution: { held } });
+  }
+  return due.filter(isShellJob);
+}
+
+async function failTask(taskId, updated, err, settings, facts = {}) {
   const cfg = loadConfig();
-  const backoffSec = cfg.worker?.retryBackoffSec || 120;
-  if (updated.execution.attempts < updated.execution.maxAttempts) {
-    const task = store.getTask(taskId);
+  const task = store.getTask(taskId);
+  const ex = { ...updated.execution, pid: null };
+  const cause = facts.cause || 'exit';
+  const logTail = store.tailLog(store.taskLogPath(taskId), 40);
+  const verdict = recovery.classifyFailure({
+    cause,
+    connector: ex.connector || templates.getTemplate(task.templateId)?.connector,
+    exitCode: facts.exitCode,
+    logTail,
+    agentId: ex.resolvedAgentId || task.inputs?.agentId,
+    taskId,
+  });
+
+  if (verdict.kind === 'retry' && ex.attempts < ex.maxAttempts) {
+    const backoffSec = cfg.worker?.retryBackoffSec || 120;
     store.updateTask(taskId, {
       status: 'scheduled',
-      schedule: {
-        ...task.schedule,
-        runAt: new Date(Date.now() + backoffSec * 1000).toISOString(),
+      schedule: { ...task.schedule, runAt: new Date(Date.now() + backoffSec * 1000).toISOString() },
+      execution: { ...ex, error: err, retryOf: { cause, error: err } },
+    });
+    return;
+  }
+
+  const words = recovery.lastWords(logTail);
+  const said = words && !String(err).includes(words) ? `. Last output: "${words}"` : '';
+  const error = verdict.detail ? `${err}${said}. ${verdict.detail}` : `${err}${said}`;
+  const signature = recovery.failureSignature(cause, err);
+  const sameAsLast = ex.lastFailure === signature;
+  const finishedAt = new Date().toISOString();
+  const schedule = task.schedule;
+  const failuresInRow = (ex.failuresInRow || 0) + 1;
+  const scheduledNext = scheduler.isRecurring(schedule?.type) ? scheduler.computeNextRun(schedule, new Date()) : null;
+  const nextRunAt = scheduledNext && new Date(Math.max(
+    new Date(scheduledNext).getTime(),
+    recovery.backoffUntil(failuresInRow, taskId),
+  )).toISOString();
+
+  if (nextRunAt) {
+    // One bad night must not end a nightly job: record the failure and keep the schedule.
+    store.updateTask(taskId, {
+      status: 'scheduled',
+      schedule: { ...schedule, type: scheduler.normalizeType(schedule.type), runAt: nextRunAt },
+      execution: {
+        ...ex,
+        attempts: 0,
+        error,
+        retryOf: null,
+        finishedAt,
+        lastFinishedAt: finishedAt,
+        lastFailure: signature,
+        failuresInRow,
       },
-      execution: { ...updated.execution, pid: null, error: err },
+    });
+    ledger.record('job_failed', {
+      taskId,
+      templateId: task.templateId,
+      workspaceId: task.workspaceId,
+      agentId: task.inputs?.agentId || null,
     });
   } else {
     store.updateTask(taskId, {
       status: 'failed',
-      execution: { ...updated.execution, pid: null, finishedAt: new Date().toISOString(), error: err },
+      execution: { ...ex, error, retryOf: null, finishedAt, lastFailure: signature, failuresInRow },
     });
-    if (settings.notifyOnFail) await omnish.taskFailed(store.getTask(taskId), err);
   }
+
+  if (!settings.notifyOnFail) return;
+  if (verdict.kind === 'owner') {
+    const { first, notices } = recovery.takeNotice(store.readJson(NOTICES_FILE, []), verdict.noticeKey);
+    if (!first) return;
+    store.writeJson(NOTICES_FILE, notices);
+  } else if (nextRunAt && sameAsLast) {
+    return;
+  }
+  const message = [error.replace(/[.\s]+$/, ''), nextRunAt && `Next run ${recovery.whenText(nextRunAt)}`].filter(Boolean).join('. ');
+  await omnish.taskFailed(store.getTask(taskId), message);
 }
 
 function waitChild(child, logStream, taskId) {
@@ -440,11 +568,13 @@ async function tick() {
   });
 
   if (!due.length) return;
+  const startable = await applyBudget(due);
+  if (!startable.length) return;
 
-  due.sort((a, b) => (b.schedule?.priority || 50) - (a.schedule?.priority || 50));
+  startable.sort((a, b) => (b.schedule?.priority || 50) - (a.schedule?.priority || 50));
 
   let candidate = null;
-  for (const t of due) {
+  for (const t of startable) {
     if (!(await isSystemBusy(t))) {
       candidate = t;
       break;
@@ -501,10 +631,22 @@ async function resumeTask(taskId) {
   if (def.resumeDay && day != null) {
     def.resumeDay({ ws, day });
   }
+  const interrupted = ['paused', 'failed'].includes(task.status) && task.execution?.error;
   store.updateTask(taskId, {
     status: 'scheduled',
-    schedule: { ...task.schedule, type: 'now', priority: 95 },
-    execution: { ...task.execution, attempts: 0, error: null, finishedAt: null },
+    // A recurring job runs now and then keeps its schedule; turning it into a one-off would end it after this run.
+    schedule: scheduler.isRecurring(task.schedule?.type)
+      ? { ...task.schedule, runAt: new Date().toISOString(), priority: 95 }
+      : { ...task.schedule, type: 'now', priority: 95 },
+    execution: {
+      ...task.execution,
+      attempts: 0,
+      error: null,
+      finishedAt: null,
+      retryOf: interrupted
+        ? { cause: task.status === 'paused' ? 'resume' : 'exit', error: task.execution.error }
+        : null,
+    },
   });
   return store.getTask(taskId);
 }
@@ -546,6 +688,8 @@ async function resumeWorkspace(wsId) {
 
 module.exports = {
   executeTask,
+  failTask,
+  isInFlight: (taskId) => inFlight.has(taskId),
   tick,
   startWorker,
   isSystemBusy,

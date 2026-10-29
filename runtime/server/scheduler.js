@@ -159,7 +159,7 @@ function computeNextRun(schedule, after = new Date()) {
   }
 
   if (type === 'daily') {
-    const hour = Number(schedule.hour) ?? 9;
+    const hour = Number(schedule.hour ?? 9);
     const minute = Number(schedule.minute) || 0;
     let candidate = zonedTimeToUtc(now.year, now.month, now.day, hour, minute, tz);
     if (candidate <= after) {
@@ -172,7 +172,7 @@ function computeNextRun(schedule, after = new Date()) {
 
   if (type === 'weekly') {
     const targetDow = Number(schedule.dayOfWeek) ?? 1;
-    const hour = Number(schedule.hour) ?? 9;
+    const hour = Number(schedule.hour ?? 9);
     const minute = Number(schedule.minute) || 0;
     let daysAhead = (targetDow - now.dayOfWeek + 7) % 7;
     let candidate = zonedTimeToUtc(now.year, now.month, now.day, hour, minute, tz);
@@ -189,7 +189,7 @@ function computeNextRun(schedule, after = new Date()) {
 
   if (type === 'monthly') {
     const dom = Number(schedule.dayOfMonth) || 1;
-    const hour = Number(schedule.hour) ?? 9;
+    const hour = Number(schedule.hour ?? 9);
     const minute = Number(schedule.minute) || 0;
     const day = clampDayOfMonth(now.year, now.month, dom);
     let candidate = zonedTimeToUtc(now.year, now.month, day, hour, minute, tz);

@@ -7,6 +7,7 @@ const store = require('./store');
 const templates = require('./templates');
 const worker = require('./worker');
 const supervisor = require('./supervisor');
+const wake = require('./wake');
 const registry = require('./connectors/registry');
 const ids = require('./connectors/ids');
 const leaptr = require('./connectors/leaptr');
@@ -345,6 +346,13 @@ function applySchedule(body) {
   };
 }
 
+let weekCache = { at: 0, byTask: new Map() };
+function weekOf(task) {
+  if (!scheduler.isRecurring(task.schedule?.type)) return null;
+  if (Date.now() - weekCache.at > 5000) weekCache = { at: Date.now(), byTask: ledger.weekOutcomes() };
+  return weekCache.byTask.get(task.id) || null;
+}
+
 function enrichTask(task) {
   const ws = cfg.workspaces?.find(w => w.id === task.workspaceId);
   const def = registry.get(ws?.connector);
@@ -357,6 +365,7 @@ function enrichTask(task) {
     scheduleLabel: scheduler.formatScheduleLabel(task.schedule),
     paused,
     muted: task.muted === true,
+    week: weekOf(task),
   };
 }
 
@@ -962,6 +971,7 @@ app.get('*', (_req, res) => res.sendFile(path.join(PUBLIC, 'index.html')));
 
 worker.startWorker();
 supervisor.startSupervisor();
+wake.startKeepAwake({ cfg, listTasks: () => store.listTasks() });
 
 const PORT = Number(process.env.AGENTBOARD_PORT || cfg.port || 4580);
 const HOST = process.env.AGENTBOARD_HOST || cfg.host || '127.0.0.1';
