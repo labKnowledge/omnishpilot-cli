@@ -29,19 +29,33 @@ omnishpilot sandbox deny-test
 omnishpilot start -d
 ```
 
+Global install also copies an **agent skill** to `~/.agents/skills/omnishpilot`
+(and symlinks into Cursor / Claude / Codex skill dirs) so coding agents learn
+the CLI. Repair anytime with `omnishpilot skill install`. Skip with
+`OMNISHPILOT_SKIP_SKILL_INSTALL=1`.
+
+Agents can use the CLI **without** the skill:
+
+```bash
+omnishpilot guide --json
+omnishpilot guide
+```
+
 Or run without a global install:
 
 ```bash
 npx omnishpilot doctor
 npx omnishpilot start -d
+npx omnishpilot skill install   # optional: put skill in ~/.agents/skills
 ```
 
 | | |
 |--|--|
 | Package name | `omnishpilot` |
-| Binaries | `omnishpilot`, `agentboard` (alias) |
+| Binaries | `omnishpilot`, `agentboard` (alias), `agent-run` |
 | Registry | https://registry.npmjs.org/omnishpilot |
 | Current line | see badge / `npm view omnishpilot version` |
+| Agent skill | `~/.agents/skills/omnishpilot` after global install |
 
 After install, config and data default to `~/.omnishpilot` (override with `OMNISHPILOT_HOME`). First run: `omnishpilot config init` if you want an explicit scaffold.
 
@@ -86,10 +100,12 @@ npm run cli:link
 ## Quick ops
 
 ```bash
+omnishpilot guide                # short playbook (humans + agents)
 omnishpilot doctor
 omnishpilot sandbox status
 omnishpilot sandbox deny-test
 omnishpilot capabilities
+omnishpilot skill status         # ~/.agents/skills/omnishpilot
 omnishpilot start -d
 omnishpilot service install      # start on login (systemd / LaunchAgent / schtasks)
 omnishpilot watch                # live dashboard
@@ -184,11 +200,14 @@ omnishpilot service uninstall
 ```
 omnishpilot-cli/
   bin/omnishpilot.js     # npm bin entry
-  lib/                   # CLI (platform, daemon, service, watch, client)
+  lib/                   # CLI (platform, daemon, service, watch, client, skill, guide)
   runtime/               # bundled server + public UI (shipped on npm)
+  skills/omnishpilot/    # agent skill (copied to ~/.agents/skills on install)
   scripts/sync-runtime.js
+  scripts/install-skill.js
+  AGENTS.md              # discovery for coding agents
   omnishpilot.config.example.json
-  docs/                  # public docs (capabilities); strategy notes stay local / gitignored
+  docs/                  # capabilities, outreach, improvement notes
 ```
 
 `npm pack` / `prepack` runs `npm run sync` so `runtime/` is complete before publish. In an AgentBoard monorepo checkout, `lib/bootstrap.js` prefers the parent `server/` for live edits.

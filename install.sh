@@ -29,8 +29,10 @@ if ! command -v omnishpilot >/dev/null 2>&1; then
 fi
 
 "$BIN_DIR/omnishpilot" version
+OMNISHPILOT_INSTALL_SKILL=1 node "$ROOT/scripts/install-skill.js" install || true
 "$BIN_DIR/omnishpilot" doctor || true
 echo
 echo "Next: omnishpilot start -d"
 echo "      omnishpilot service install   # optional login service"
+echo "      omnishpilot guide             # agents + humans"
 echo "      omnishpilot watch"

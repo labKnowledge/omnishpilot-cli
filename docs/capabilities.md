@@ -18,6 +18,8 @@ Research + implementation snapshot of the local autonomy harness.
 | Morning pack | Wake to a verdict, not a log wall | **have** |
 | Soak / deny-test | Prove autonomy + escape blocked | **have** |
 | Pure terminal schedule | Cron-like commands/scripts/apps, no agent | **have** |
+| Agent-discoverable CLI | `guide --json` without needing a skill | **have** |
+| Global agent skill on install | `~/.agents/skills/omnishpilot` (+ Cursor/Claude/Codex links) | **have** |
 
 ## Have now
 
@@ -45,6 +47,8 @@ Research + implementation snapshot of the local autonomy harness.
 - **Keep awake** — the machine can't sleep while a job runs or is due within 15 minutes (`systemd-inhibit` on Linux, `caffeinate` on macOS, `SetThreadExecutionState` on Windows); the lock dies with the daemon
 - **Budget caps** — `omnishpilot budget --minutes 180 --usd 20`: agent minutes per day and reported spend per month, warning at 80%; agent jobs over a cap wait, terminal jobs still run
 - **Webhook redelivery** — an event redelivered with the same `X-GitHub-Delivery` / `Linear-Delivery` / `Idempotency-Key` within 7 days returns the job it already started
+- **`omnishpilot guide [--json]`** — embedded playbook so agents schedule correctly without a skill
+- **Skill postinstall** — `npm i -g` copies `skills/omnishpilot` → `~/.agents/skills/omnishpilot` (skip: `OMNISHPILOT_SKIP_SKILL_INSTALL=1`)
 
 ## Config surface (new)
 
