@@ -47,7 +47,10 @@
     "defaultWorkspace": "",
     "envFile": "",
     "preferredOrder": ["cursor-agent", "claude", "agy"],
-    "cooldownMinutes": 60
+    "cooldownMinutes": 60,
+    "devMode": "auto",
+    "attachDevSkill": false,
+    "defaultSkills": []
   },
   "sandbox": {
     "enabled": true,

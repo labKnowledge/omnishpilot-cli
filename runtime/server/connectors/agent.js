@@ -9,6 +9,7 @@ const sandbox = require('../sandbox');
 const acceptance = require('../acceptance');
 const recovery = require('../recovery');
 const { resolveAgentRunSpawn } = require('../resolve-bin');
+const devMode = require('../dev-mode');
 
 function parseEnvFile(filePath) {
   if (!fs.existsSync(filePath)) return {};
@@ -35,20 +36,27 @@ function buildAgentEnv(cfg) {
   return env;
 }
 
-function agentPromptPath(task) {
+function agentPromptPath(task, opts = {}) {
   const ins = task.instructions?.agentPrompt || '';
   const goal = task.inputs?.goal || task.summary || '';
   const title = task.inputs?.title || task.title;
   const workspace = task.inputs?.workspace || '';
   const deliverables = task.instructions?.deliverables || task.instructions?.outline || '';
   const constraints = task.instructions?.constraints || task.instructions?.acceptance || '';
-  const skills = [].concat(task.inputs?.skills || task.skills || []).filter(Boolean);
-
-  if (ins.trim()) return ins;
+  const skills = [].concat(
+    opts.skills || task.inputs?.skills || task.skills || []
+  ).filter(Boolean);
 
   const skillsBlock = skills.length
-    ? `\n## Skills to use\n${skills.map(s => `- ${s}`).join('\n')}\n\nScan the workspace for context before writing copy or code.\n`
+    ? `\n## Skills to use\n${skills.map(s => `- ${s}`).join('\n')}\n\nIf a named skill is installed globally (e.g. ~/.agents/skills/<name>), load it. Scan the workspace before writing copy or code.\n`
     : '';
+
+  // Custom agentPrompt still gets skills + structure appended when empty sections dominate;
+  // if the user supplied a full prompt, honor it but prepend skills when we have them.
+  if (ins.trim()) {
+    if (!skills.length) return ins;
+    return `${skillsBlock.trim()}\n\n${ins}`;
+  }
 
   return `# ${title}
 ${skillsBlock}
@@ -123,7 +131,16 @@ Always write \`result.md\` in the output directory summarizing what changed and 
 ## When finishing
 Write \`result.md\` in the output directory summarizing what you did and where outputs are.
 `;
-  const fullPrompt = `${agentPromptPath(task)}
+  const enrichedSkills = devMode.enrichSkills(task, cfg, {
+    injectDev: devMode.shouldInjectDevOs(task, cfg),
+  });
+  // Persist resolved skills so the UI / follow-up runs see what the harness attached.
+  if (enrichedSkills.length) {
+    store.updateTask(task.id, { inputs: { ...(task.inputs || {}), skills: enrichedSkills } });
+    task = { ...task, inputs: { ...(task.inputs || {}), skills: enrichedSkills } };
+  }
+
+  let body = `${agentPromptPath(task, { skills: enrichedSkills })}
 ${recovery.retryNote(task.execution?.retryOf)}
 ## Output directory
 Save all deliverables here: ${outDir}
@@ -132,10 +149,15 @@ Save all deliverables here: ${outDir}
 Use available tools (GenerateImage, file write, shell) as needed to complete the goal.
 For images: save PNG files into the output directory and write a brief result.md summary.
 ${acceptanceBlock}${progressUpdatesBlock(cfg, task)}`;
+
+  const applied = devMode.applyDevModeToPrompt(body, task, cfg);
+  const fullPrompt = applied.prompt;
   fs.writeFileSync(promptFile, fullPrompt);
   logStream.write(`workspace: ${workspacePath}${warned ? ' (fallback)' : ''}\n`);
   logStream.write(`output: ${outDir}\n`);
   logStream.write(`prompt: ${promptFile}\n`);
+  logStream.write(`devMode: ${devMode.resolveDevMode(task, cfg)} inject=${applied.injectDev ? 'yes' : 'no'}\n`);
+  if (enrichedSkills.length) logStream.write(`skills: ${enrichedSkills.join(', ')}\n`);
 
   const env = buildAgentEnv(cfg);
   try {

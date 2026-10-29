@@ -42,6 +42,37 @@ omnishpilot add --now --follow "write result.md summarizing this repo"
 
 Data/config live in `~/.omnishpilot` (`OMNISHPILOT_HOME` to override).
 
+## Dev operating system (subtle, built-in)
+
+Unattended **code** jobs need more than a schedule — they need confidence to
+research, plan, finish, and prove. OmnishPilot embeds a distilled Dev OS inside
+this skill (not a separate product):
+
+| File | When |
+|------|------|
+| [references/dev-operating-system.md](references/dev-operating-system.md) | Authority, value/effort, architecture lens |
+| [references/single-shot-plan.md](references/single-shot-plan.md) | Research → plan.md → build → result.md |
+
+**Harness injection** (so humans do not babysit skill attachment):
+
+| Mode | Behavior |
+|------|----------|
+| `auto` (default) | Inject compact Dev OS for code-related agent jobs |
+| `always` | Inject for every agent job |
+| `off` | Never inject |
+
+```bash
+omnishpilot dev-mode              # show
+omnishpilot dev-mode always       # compel for all agent jobs
+omnishpilot add --dev "…"         # force on one job
+omnishpilot add --no-dev "…"      # suppress one job
+omnishpilot add --skills lean-venture-analyst "…"
+```
+
+Optional: set `"attachDevSkill": true` in config to also *name* a global `dev`
+skill if the user keeps the full deep skill installed. Knowledge for success
+still ships here so automation works without oversight.
+
 ## Agent decision tree
 
 | User intent | Command shape |
@@ -50,6 +81,7 @@ Data/config live in `~/.omnishpilot` (`OMNISHPILOT_HOME` to override).
 | Do this once in N minutes | `omnishpilot add --in 30 "…"` |
 | Every day / hour / week | `omnishpilot add --daily 09:00 "…"` / `--hourly` / `--weekly mon 09:30` |
 | Pure script, no LLM | `omnishpilot add --command --daily 02:00 --workspace ~/data "./backup.sh"` |
+| Full feature / greenfield unattended | `omnishpilot add --dev --now --follow --workspace ~/proj "…"` |
 | Track a job you created | `omnishpilot progress <id> --json` then `follow <id>` |
 | Is the machine ready? | `omnishpilot doctor --json` |
 | Cap spend / time | `omnishpilot budget --minutes 180 --usd 20` |
@@ -59,7 +91,7 @@ Data/config live in `~/.omnishpilot` (`OMNISHPILOT_HOME` to override).
 1. CLI is **deterministic** — no LLM interprets flags. Pass exact schedule flags.
 2. Always prefer `--json` when parsing output.
 3. After `add`, capture the returned job `id`; use `follow` / `progress` / `tasks`.
-4. For coding work, pass `--workspace` to the repo root.
+4. For coding work, pass `--workspace` to the repo root (Dev OS auto-attaches in `auto` mode).
 5. Unattended agent jobs need a healthy sandbox (`doctor` + `sandbox check`).
 6. Do not invent flags. Run `omnishpilot guide --json` or `help` if unsure.
 

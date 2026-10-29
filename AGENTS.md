@@ -38,6 +38,17 @@ omnishpilot skill status
 
 Skip: `OMNISHPILOT_SKIP_SKILL_INSTALL=1`.
 
+## Dev OS (unattended coding confidence)
+
+Code-related agent jobs get a distilled Dev operating system injected by default
+(`agent.devMode: auto`). Knowledge lives in the OmnishPilot skill references —
+subtle, no separate attach required for success.
+
+```bash
+omnishpilot dev-mode always   # compel for every agent job
+omnishpilot add --dev --workspace ~/proj "scaffold …"
+```
+
 ## Hard rules
 
 - Map user intent to **exact flags**; do not invent options.

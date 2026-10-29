@@ -33,6 +33,9 @@ outcomes, widen who can install.
 - Global skill install to `~/.agents/skills` on `npm i -g`  
 - Doctor reports skill presence  
 - `AGENTS.md` in the package for repo-aware agents  
+- **Dev OS** distilled into the OmnishPilot skill + harness injection (`devMode` auto/always/off) so code jobs finish without babysitting skill attaches  
+- Brand kit in `brand/` for public discussion (OG, icon, wordmark, story)  
+
 
 ## Distribution for global reach
 

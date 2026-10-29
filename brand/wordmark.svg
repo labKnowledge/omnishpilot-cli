@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 120" role="img" aria-label="OmnishPilot">
+  <defs>
+    <linearGradient id="ring" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#00e5ff"/>
+      <stop offset="100%" stop-color="#7af0ff"/>
+    </linearGradient>
+  </defs>
+  <g transform="translate(48 60)">
+    <path fill="#0a2230" stroke="#00e5ff" stroke-width="3"
+          d="M-36 -28 L32 -36 L40 28 L-28 36 Z"/>
+    <circle r="22" fill="none" stroke="url(#ring)" stroke-width="4"
+            stroke-linecap="round" stroke-dasharray="100 28" transform="rotate(120)"/>
+    <path d="M0 -20 L11 7 L0 1 L-11 7 Z" fill="#d8f6ff"/>
+    <circle cx="18" cy="18" r="5" fill="#ff8a2b"/>
+  </g>
+  <text x="110" y="72" fill="#e8f7ff"
+        font-family="ui-sans-serif, system-ui, 'Segoe UI', sans-serif"
+        font-size="44" font-weight="650" letter-spacing="-0.02em">OmnishPilot</text>
+  <text x="114" y="98" fill="#7aa0ae"
+        font-family="ui-sans-serif, system-ui, 'Segoe UI', sans-serif"
+        font-size="14" letter-spacing="0.08em">WAKE TO PROOF, NOT HOPE</text>
+</svg>

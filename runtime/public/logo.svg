@@ -14,7 +14,8 @@
       <stop offset="100%" stop-color="#000" stop-opacity="0.45"/>
     </linearGradient>
   </defs>
-  <g transform="translate(256 256)">
+  <!-- Slight scale + nudge so the tilted plate sits centered with safe padding -->
+  <g transform="translate(256 256) scale(0.92) translate(-6 -4)">
     <path fill="url(#hull)" stroke="#00e5ff" stroke-width="10"
           d="M-188 -140 L168 -188 L208 148 L-148 196 Z"/>
     <path fill="url(#bevel)" stroke="none"

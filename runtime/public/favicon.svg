@@ -1,13 +1,21 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512" role="img" aria-label="OmnishPilot">
   <defs>
-    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#1465E0"/>
-      <stop offset="100%" stop-color="#083E9E"/>
+    <linearGradient id="hull" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0a2230"/>
+      <stop offset="100%" stop-color="#020814"/>
+    </linearGradient>
+    <linearGradient id="ring" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#00e5ff"/>
+      <stop offset="100%" stop-color="#7af0ff"/>
     </linearGradient>
   </defs>
-  <rect x="0" y="0" width="512" height="512" fill="url(#bg)"/>
-  <circle cx="256" cy="256" r="122" fill="none" stroke="#F8F9FF" stroke-width="30"
-          stroke-linecap="round" stroke-dasharray="653 95" transform="rotate(120 256 256)"/>
-  <circle cx="360" cy="358" r="21" fill="#2DD4BF"/>
-  <path d="M 256 146 L 316 300 L 256 264 L 196 300 Z" fill="#F8F9FF"/>
+  <g transform="translate(256 256) scale(0.92) translate(-6 -4)">
+    <path fill="url(#hull)" stroke="#00e5ff" stroke-width="10"
+          d="M-188 -140 L168 -188 L208 148 L-148 196 Z"/>
+    <circle r="118" fill="none" stroke="url(#ring)" stroke-width="22"
+            stroke-linecap="round" stroke-dasharray="520 120" transform="rotate(120)"/>
+    <path d="M0 -106 L56 36 L0 4 L-56 36 Z" fill="#d8f6ff"/>
+    <circle cx="92" cy="92" r="22" fill="#ff8a2b"/>
+    <circle cx="92" cy="92" r="10" fill="#ffe0c0"/>
+  </g>
 </svg>

@@ -41,6 +41,11 @@ omnishpilot guide --json
 omnishpilot guide
 ```
 
+**Dev OS:** code-related agent jobs automatically get a distilled “finish with
+confidence” operating system (research → plan → build → prove). Toggle with
+`omnishpilot dev-mode auto|always|off` or per job `--dev` / `--no-dev`. Brand
+assets for public posts live in [`brand/`](./brand/).
+
 Or run without a global install:
 
 ```bash
