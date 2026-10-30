@@ -8,12 +8,24 @@
       <stop offset="0%" stop-color="#00e5ff"/>
       <stop offset="100%" stop-color="#7af0ff"/>
     </linearGradient>
+    <linearGradient id="bevel" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#7af0ff" stop-opacity="0.55"/>
+      <stop offset="45%" stop-color="#00e5ff" stop-opacity="0"/>
+      <stop offset="100%" stop-color="#000" stop-opacity="0.45"/>
+    </linearGradient>
   </defs>
+  <!-- Slight scale + nudge so the tilted plate sits centered with safe padding -->
   <g transform="translate(256 256) scale(0.92) translate(-6 -4)">
     <path fill="url(#hull)" stroke="#00e5ff" stroke-width="10"
           d="M-188 -140 L168 -188 L208 148 L-148 196 Z"/>
+    <path fill="url(#bevel)" stroke="none"
+          d="M-188 -140 L168 -188 L208 148 L-148 196 Z" opacity="0.85"/>
+    <path fill="none" stroke="rgba(180,240,255,0.45)" stroke-width="3"
+          d="M-156 -120 L140 -160 L172 120 L-124 160 Z"/>
     <circle r="118" fill="none" stroke="url(#ring)" stroke-width="22"
             stroke-linecap="round" stroke-dasharray="520 120" transform="rotate(120)"/>
+    <circle r="78" fill="none" stroke="rgba(0,229,255,0.25)" stroke-width="6"
+            stroke-dasharray="8 10"/>
     <path d="M0 -106 L56 36 L0 4 L-56 36 Z" fill="#d8f6ff"/>
     <circle cx="92" cy="92" r="22" fill="#ff8a2b"/>
     <circle cx="92" cy="92" r="10" fill="#ffe0c0"/>

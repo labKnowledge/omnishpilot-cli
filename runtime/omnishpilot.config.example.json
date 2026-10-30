@@ -46,7 +46,11 @@
     "cursorModel": "",
     "defaultWorkspace": "",
     "envFile": "",
-    "preferredOrder": ["cursor-agent", "claude", "agy"],
+    "preferredOrder": [
+      "cursor-agent",
+      "claude",
+      "agy"
+    ],
     "cooldownMinutes": 60,
     "devMode": "auto",
     "attachDevSkill": false,
@@ -57,13 +61,21 @@
     "backend": "auto",
     "network": true,
     "requireForAutonomous": true,
-    "hidePaths": ["~/.ssh", "~/.aws", "~/.gnupg", "~/.kube", "~/.docker"],
+    "hidePaths": [
+      "~/.ssh",
+      "~/.aws",
+      "~/.gnupg",
+      "~/.kube",
+      "~/.docker"
+    ],
     "extraBindRw": []
   },
   "acceptance": {
     "enabled": true,
     "always": false,
-    "defaultArtifacts": ["result.md"],
+    "defaultArtifacts": [
+      "result.md"
+    ],
     "defaultTestCommand": null,
     "verifier": false,
     "soft": false,

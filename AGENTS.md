@@ -6,10 +6,10 @@ when helping a user schedule work.
 ## Discover without skills
 
 ```bash
-omnishpilot guide --json    # machine-readable contract
-omnishpilot guide           # short playbook
-omnishpilot help
-omnishpilot doctor --json
+omnip guide --json    # or: omnishpilot (same binary)
+omnip guide
+omnip help
+omnip doctor --json
 ```
 
 ## Default workflow

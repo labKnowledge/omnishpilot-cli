@@ -7,7 +7,7 @@ description: >-
   agent work, recurring automation, agent-run scheduling, cron for coding agents,
   or OmnishPilot setup/doctor/sandbox.
 metadata:
-  version: 0.1.0
+  version: 0.0.6
   cli: omnishpilot
   homepage: https://github.com/labKnowledge/omnishpilot-cli
 ---
@@ -18,8 +18,8 @@ OmnishPilot is a **local autonomy harness**. It queues jobs, runs any agent CLI
 on PATH (or a plain shell command) **unattended inside a sandbox**, tracks
 progress, and can notify when work is done.
 
-Binaries after `npm i -g omnishpilot`: `omnishpilot`, `agentboard` (alias),
-`agent-run` (bundled).
+Binaries after `npm i -g omnishpilot`: `omnishpilot`, short alias **`omnip`**,
+`agentboard` (legacy alias), `agent-run` (bundled). Prefer `omnip` in examples.
 
 Prefer the CLI itself over guessing. Out of the box (no skill required):
 

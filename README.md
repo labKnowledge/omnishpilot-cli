@@ -1,267 +1,198 @@
-# OmnishPilot CLI
+<p align="center">
+  <img src="brand/logo-512.png" alt="OmnishPilot" width="128" height="128" />
+</p>
 
-[![npm](https://img.shields.io/npm/v/omnishpilot.svg)](https://www.npmjs.com/package/omnishpilot)
-[![Node](https://img.shields.io/node/v/omnishpilot.svg)](https://www.npmjs.com/package/omnishpilot)
-[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](./LICENSE)
+<h1 align="center">OmnishPilot</h1>
 
-**npm package:** [`omnishpilot`](https://www.npmjs.com/package/omnishpilot)  
-**Repository:** [github.com/labKnowledge/omnishpilot-cli](https://github.com/labKnowledge/omnishpilot-cli)  
-**Issues:** [github.com/labKnowledge/omnishpilot-cli/issues](https://github.com/labKnowledge/omnishpilot-cli/issues)
+<p align="center"><strong>Wake to proof, not hope.</strong></p>
 
-Free **autonomy harness** for heavy agent work: schedule jobs, run any local/OSS agent CLI **unattended inside a sandbox**, failover on rate limits, track runs, and get notified when work finishes.
+<p align="center">
+  Close the laptop. Come back to finished work — not a “success” that did nothing.
+</p>
 
-Works on **Linux**, **macOS**, and **Windows** (Node **18+**). Sandbox isolation is strongest on Linux with [bubblewrap](https://github.com/containers/bubblewrap) (`bwrap`).
+<p align="center"><em>Free · local · yours</em></p>
 
-**Self-contained CLI:** `agent-run` ships inside this package (`bin/agent-run.js` / npm bin `agent-run`). You do **not** need a separate agent-run install. Optional externals: Omnish (notify), agent CLIs (Cursor / Claude / …), and a sandbox backend on Linux.
-
-> Vendor routines (Claude cowork/routines, Cursor Automations) optimize for *simple* jobs and still hit approval walls or single-vendor lock-in. OmnishPilot trades simplicity for **possibility**: complex jobs that must complete alone, with your machine’s agents, contained by your sandbox.
+<p align="center">
+  <a href="https://www.npmjs.com/package/omnishpilot"><img src="https://img.shields.io/npm/v/omnishpilot.svg" alt="npm version" /></a>
+  <a href="https://www.npmjs.com/package/omnishpilot"><img src="https://img.shields.io/node/v/omnishpilot.svg" alt="Node version" /></a>
+  <a href="./LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="MIT" /></a>
+</p>
 
 ---
 
-## Install (npm)
+## Why people use it
 
-Global CLI (recommended):
+Scheduled agents promised overnight work. What most people got was **babysitting**: approval popups, hangs, rate limits, and green checks with empty folders.
+
+OmnishPilot is for a simpler belief: **if the work is worth doing, it should finish alone — and prove it.**
+
+| You want… | You get… |
+|-----------|----------|
+| To set it once and walk away | Jobs that keep going without you watching |
+| To trust the morning | A clear result you can open — not a wall of logs |
+| Tools you already have | Uses the AI helpers already on your computer |
+| Something anyone can try | Plain commands. One install. No cloud account for the harness |
+
+Works on **Windows**, **Mac**, and **Linux**. Stays on **your** machine.
+
+Short command after install: **`omnip`** (same as `omnishpilot`).
+
+### Hand it to your AI, you stay on what matters
+
+You don’t have to learn every flag. After install, **give OmnishPilot to the AI you already chat with** (Cursor, Claude, ChatGPT with a terminal, and friends) and say something like:
+
+> I installed OmnishPilot (`omnip`). Help me plan tomorrow and schedule the heavy work so it finishes while I’m away. Use `omnip guide` if you need the commands.
+
+The agent can check your machine, suggest a day plan, and set the schedule for you. **You decide what matters. It handles the queue.**
+
+That’s the point: stop spending attention on *when* and *how* the work runs. Spend it on judgment, people, and the work only you can do.
+
+Already live in ClickUp (or a similar task list)? Tell your agent:
+
+> Look at my ClickUp tasks. Pick what can finish overnight, schedule them with OmnishPilot (`omnip`), and leave me proof when I wake up.
+
+You wake up to **done work**, not another list waiting for you.
+
+---
+
+## Get started in 5 minutes
+
+You need [Node.js 18+](https://nodejs.org/) (LTS is fine). That’s it for a first try.
+
+### Step 1 — Install
 
 ```bash
 npm install -g omnishpilot
-omnishpilot doctor
-omnishpilot sandbox deny-test
-omnishpilot start -d
 ```
 
-Global install also copies an **agent skill** to `~/.agents/skills/omnishpilot`
-(and symlinks into Cursor / Claude / Codex skill dirs) so coding agents learn
-the CLI. Repair anytime with `omnishpilot skill install`. Skip with
-`OMNISHPILOT_SKIP_SKILL_INSTALL=1`.
+You now have **`omnip`** (and `omnishpilot` — same tool).
 
-Agents can use the CLI **without** the skill:
+### Step 2 — Check your machine
 
 ```bash
-omnishpilot guide --json
-omnishpilot guide
+omnip doctor
 ```
 
-**Dev OS:** code-related agent jobs automatically get a distilled “finish with
-confidence” operating system (research → plan → build → prove). Toggle with
-`omnishpilot dev-mode auto|always|off` or per job `--dev` / `--no-dev`. Brand
-assets for public posts live in [`brand/`](./brand/).
+Fix anything it flags in plain language (missing pieces, permissions). Run it again until it looks ready.
 
-Or run without a global install:
+### Step 3 — Leave it running in the background
 
 ```bash
-npx omnishpilot doctor
-npx omnishpilot start -d
-npx omnishpilot skill install   # optional: put skill in ~/.agents/skills
+omnip start -d
 ```
 
-| | |
-|--|--|
-| Package name | `omnishpilot` |
-| Binaries | `omnishpilot`, `agentboard` (alias), `agent-run` |
-| Registry | https://registry.npmjs.org/omnishpilot |
-| Current line | see badge / `npm view omnishpilot version` |
-| Agent skill | `~/.agents/skills/omnishpilot` after global install |
+This is the engine that **actually runs your jobs** while you’re away. The optional dashboard gives you a window into what is happening.
 
-After install, config and data default to `~/.omnishpilot` (override with `OMNISHPILOT_HOME`). First run: `omnishpilot config init` if you want an explicit scaffold.
-
-**Linux autonomy:** install bubblewrap so sandboxed unattended runs work:
+**Best for “close the laptop and forget”:** also install the login service so it comes back after reboot:
 
 ```bash
-sudo apt install bubblewrap   # Debian/Ubuntu
-omnishpilot sandbox check
+omnip service install
+```
+
+Tip: if you skip step 3, many commands will start the engine for you when you type them — but for overnight schedules, keep it running with `start -d` or `service install`.
+
+### Step 4 — Run your first job
+
+Pick one. Copy, paste, go.
+
+**A. Something useful right now** (finishes while you watch the first time):
+
+```bash
+omnip add --now --follow "Write a short result.md that summarizes what this computer is for and what I should do next"
+```
+
+**B. Something that runs every morning:**
+
+```bash
+omnip add --daily 09:00 "Triage what needs my attention today and write result.md with the top three items"
+```
+
+**C. A simple reminder-style command** (no AI — just your terminal on a schedule):
+
+```bash
+omnip add --command --daily 08:00 "echo Good morning > ~/omnishpilot-hello.txt"
+```
+
+### Step 5 — See that it worked
+
+```bash
+omnip tasks
+omnip dashboard
+```
+
+Open the dashboard link it prints, or follow a job:
+
+```bash
+omnip follow <id>
+```
+
+You should leave with a **file or clear outcome** — proof, not hope.
+
+---
+
+## Everyday use (keep it this simple)
+
+```bash
+# One-shot soon
+omnip add "Draft a one-page brief on X into result.md"
+
+# Right now, wait until done
+omnip add --now --follow "Fix the login bug in ~/my-app and write result.md"
+
+# Every day / every hour
+omnip add --daily 09:00 "…"
+omnip add --hourly "…"
+
+# Plain script or command (backups, health checks)
+omnip add --command --daily 02:00 --workspace ~/data "./backup.sh"
+```
+
+Stuck? Ask for the short playbook — or ask your AI to run it:
+
+```bash
+omnip guide
+```
+
+**Prefer not to touch the terminal?** Tell your agent: *“Schedule my day with OmnishPilot”* and let it drive. You approve the plan; it runs the commands.
+
+---
+
+## Make it yours (optional)
+
+| Need | Do this |
+|------|---------|
+| Open the friendly UI | `omnip open` or `omnip dashboard` |
+| Set a UI password | `omnip password set 'your-secret'` |
+| See live progress | `omnip watch` |
+| Stop everything | `omnip stop` |
+| Phone / chat ping when done | Install [Omnish](https://www.npmjs.com/package/omnish) separately, then `omnip notify-test` |
+
+On Linux, for heavier AI jobs that must run without clicking “Allow”, install isolation once:
+
+```bash
+sudo apt install bubblewrap
+omnip sandbox check
 ```
 
 ---
 
-## Install from source (this repo)
+## Who it’s for
+
+- People who want their **AI to plan and schedule the day**, not just chat about it
+- Builders who want overnight work without babysitting
+- Anyone who’d rather **focus on what matters** and let the queue run alone
+
+You don’t need to become a scheduler expert. Install once, hand OmnishPilot to your AI, and keep your attention where it counts.
+
+---
+
+## Help
 
 ```bash
-git clone https://github.com/labKnowledge/omnishpilot-cli.git
-cd omnishpilot-cli
-bash install.sh          # npm install + sync runtime + link → ~/.local/bin
-omnishpilot doctor
-omnishpilot start -d
+omnip guide
+omnip doctor
+omnip help
 ```
 
-Manual:
-
-```bash
-npm install && npm run sync
-npm link                 # or: ln -sfn "$PWD/bin/omnishpilot.js" ~/.local/bin/omnishpilot
-```
-
-### Monorepo note
-
-Upstream development also lives under the [AgentBoard](https://github.com/labKnowledge/AgentBoard) monorepo (`omnishpilot-cli/` folder). This repository is the **publishable npm package** (self-contained `runtime/`). Prefer this repo for installs and issues; use AgentBoard when hacking the live server next to other AgentBoard apps.
-
-```bash
-# From AgentBoard checkout
-npm run cli:link
-# or: cd omnishpilot-cli && bash install.sh
-```
-
----
-
-## Quick ops
-
-```bash
-omnishpilot guide                # short playbook (humans + agents)
-omnishpilot doctor
-omnishpilot sandbox status
-omnishpilot sandbox deny-test
-omnishpilot capabilities
-omnishpilot skill status         # ~/.agents/skills/omnishpilot
-omnishpilot start -d
-omnishpilot service install      # start on login (systemd / LaunchAgent / schtasks)
-omnishpilot watch                # live dashboard
-omnishpilot watch <job-id>       # follow a job log
-omnishpilot watch --log          # follow daemon log
-omnishpilot add "research competitor pricing into a one-pager"
-# → agent-task, once at now+5m (deterministic; no LLM interpret)
-omnishpilot add --workspace ~/proj --now --follow "fix the auth redirect"
-omnishpilot add --daily 09:00 "triage overnight CI"
-# Pure terminal — no agent (cron-like command / script / app):
-omnishpilot add --command --daily 02:00 --workspace ~/data "./backup.sh"
-omnishpilot add -c --hourly "curl -fsS https://example.com/health >/dev/null"
-omnishpilot progress <id> --json
-omnishpilot follow <id>
-omnishpilot password set 'your-secret'   # set UI password from CLI
-omnishpilot dashboard
-omnishpilot stop
-```
-
-
-API commands **auto-start** the daemon when it is not running. Disable with `--no-autostart` or `OMNISHPILOT_NO_AUTOSTART=1`.
-
----
-
-## Sandbox (required for autonomy)
-
-Unattended agents use skip-permissions / `--yolo` flags via the **bundled** `agent-run`. That is only safe inside isolation.
-
-| Backend | When |
-|---------|------|
-| **bwrap** (default on Linux) | Host FS read-only; workspace + HOME writable; `~/.ssh` / `~/.aws` / … masked |
-| docker / firejail | Fallbacks when `backend: auto` and bwrap is missing |
-| none | Only if `sandbox.enabled=false` or `requireForAutonomous=false` (unsafe) |
-
-```bash
-omnishpilot sandbox check      # exit 1 if autonomous gate fails
-omnishpilot sandbox deny-test  # prove outside writes fail
-```
-
-Config (`sandbox` in `omnishpilot.config.json`):
-
-| Key | Default | Meaning |
-|-----|---------|---------|
-| `enabled` | `true` | Wrap agent-run in the sandbox |
-| `backend` | `auto` | `auto` \| `bwrap` \| `docker` \| `firejail` \| `none` |
-| `network` | `true` | Agents need model APIs; set `false` to cut egress |
-| `requireForAutonomous` | `true` | Refuse bare YOLO if sandbox unhealthy |
-| `hidePaths` | ssh/aws/gnupg/kube/docker | tmpfs masks over sensitive dirs |
-| `extraBindRw` | `[]` | Extra RW mounts |
-
----
-
-## Why this CLI
-
-| Capability | Status |
-|------------|--------|
-| Any agent on PATH (Cursor, Claude, OSS via agent-run) | **have** |
-| Unattended flags (no Approve-on-every-tool) | **have** |
-| OS sandbox around those runs | **have** (Linux bwrap) |
-| Schedule + watch + supervisor heartbeat | **have** |
-| Omnish notify / morning pack delivery | **have** |
-| Agent failover + resume-at-reset | **have** |
-| Acceptance gates (artifacts / test command) | **have** |
-| Git worktree isolation per run | **have** |
-| Verifier agent before ship | **have** |
-| Hang / timeout detector | **have** |
-| Webhook triggers (GitHub/Linear/generic) | **have** |
-
-See `omnishpilot capabilities` and [`docs/capabilities.md`](./docs/capabilities.md).
-
----
-
-## Service (login)
-
-| OS | Mechanism |
-|----|-----------|
-| Linux | `systemd --user` unit `omnishpilot.service` |
-| macOS | LaunchAgent `tech.eligapris.omnishpilot` |
-| Windows | Scheduled task `OmnishPilot` (ONLOGON) |
-
-```bash
-omnishpilot service install
-omnishpilot service status
-omnishpilot service logs
-omnishpilot service uninstall
-```
-
----
-
-## Package layout
-
-```
-omnishpilot-cli/
-  bin/omnishpilot.js     # npm bin entry
-  lib/                   # CLI (platform, daemon, service, watch, client, skill, guide)
-  runtime/               # bundled server + public UI (shipped on npm)
-  skills/omnishpilot/    # agent skill (copied to ~/.agents/skills on install)
-  scripts/sync-runtime.js
-  scripts/install-skill.js
-  AGENTS.md              # discovery for coding agents
-  omnishpilot.config.example.json
-  docs/                  # capabilities, outreach, improvement notes
-```
-
-`npm pack` / `prepack` runs `npm run sync` so `runtime/` is complete before publish. In an AgentBoard monorepo checkout, `lib/bootstrap.js` prefers the parent `server/` for live edits.
-
----
-
-## Env
-
-| Variable | Purpose |
-|----------|---------|
-| `OMNISHPILOT_HOME` | Config + data directory |
-| `OMNISHPILOT_PACKAGE_ROOT` | App root containing `server/` + `public/` |
-| `OMNISHPILOT_HOST` / `OMNISHPILOT_PORT` | CLI client target |
-| `OMNISHPILOT_NO_AUTOSTART` | Disable auto daemon start |
-
----
-
-## Publish (maintainers)
-
-Versioning (not classic “+1 / roll at 9”):
-
-- Each of `MAJOR.MINOR.PATCH` counts **0–99**, then carries (`0.0.99` → `0.1.0`; `0.0.9` → `0.0.10`).
-- Normal fix/feature: **+1**.
-- **Major upgrade / large change: +5** on the segment you advance.
-- Keep `package.json`, git tag `vX.Y.Z`, and npm identical.
-
-```bash
-cd omnishpilot-cli
-npm run check && npm run sync
-# set package.json to the next number under the rules above, then:
-git commit -am "release: vX.Y.Z"
-git tag -a vX.Y.Z -m "omnishpilot X.Y.Z"
-git push origin main --tags
-npm publish --access public --otp=YOUR_CODE
-```
-
-Requires npm auth with publish rights to `omnishpilot`. See `.cursor/rules/versioning.mdc`.
-
----
-
-## Links
-
-| | URL |
-|--|-----|
-| npm | https://www.npmjs.com/package/omnishpilot |
-| Source | https://github.com/labKnowledge/omnishpilot-cli |
-| Issues | https://github.com/labKnowledge/omnishpilot-cli/issues |
-| Related monorepo | https://github.com/labKnowledge/AgentBoard |
-
-## License
-
-MIT — free tool. See [LICENSE](./LICENSE).
+Package: [npmjs.com/package/omnishpilot](https://www.npmjs.com/package/omnishpilot) · command: **`omnip`**  
+License: MIT — free · local · yours
