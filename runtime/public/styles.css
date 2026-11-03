@@ -1484,7 +1484,8 @@ body {
 }
 
 .settings-card select,
-.settings-card input[type="text"] {
+.settings-card input[type="text"],
+.settings-card input[type="number"] {
   width: 100%;
   margin-top: 8px;
   background: var(--md-sys-color-surface-container-lowest);

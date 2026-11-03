@@ -556,41 +556,65 @@ function isTaskPaused(task) {
   return def.isPaused({ ws, day });
 }
 
+/** True when this job asked to wait for a free serial slot (--queue). */
+function wantsQueue(task) {
+  return Boolean(task?.schedule?.queue || task?.inputs?.queue);
+}
+
+let tickLock = false;
+
 async function tick() {
-  const settings = store.getSettings();
-  if (store.runningTasks().length >= settings.maxConcurrent) return;
-
-  const due = store.listTasks().filter((t) => {
-    if (t.status !== 'scheduled') return false;
-    if (t.muted) return false;
-    if (!scheduler.isDue(t.schedule)) return false;
-    return !isTaskPaused(t);
-  });
-
-  if (!due.length) return;
-  const startable = await applyBudget(due);
-  if (!startable.length) return;
-
-  startable.sort((a, b) => (b.schedule?.priority || 50) - (a.schedule?.priority || 50));
-
-  let candidate = null;
-  for (const t of startable) {
-    if (!(await isSystemBusy(t))) {
-      candidate = t;
-      break;
-    }
-  }
-  if (!candidate) return;
-
+  if (tickLock) return;
+  tickLock = true;
   try {
-    await executeTask(candidate);
-  } catch (e) {
-    const t = store.getTask(candidate.id);
-    store.updateTask(candidate.id, {
-      status: 'failed',
-      execution: { ...t.execution, error: e.message, finishedAt: new Date().toISOString() },
+    const settings = store.getSettings();
+    const max = store.resolveMaxConcurrent(settings);
+    let running = store.runningTasks().length;
+    if (max > 0 && running >= max) return;
+
+    const due = store.listTasks().filter((t) => {
+      if (t.status !== 'scheduled') return false;
+      if (t.muted) return false;
+      if (inFlight.has(t.id)) return false;
+      if (!scheduler.isDue(t.schedule)) return false;
+      return !isTaskPaused(t);
     });
-    await omnish.taskFailed(t, e.message);
+
+    if (!due.length) return;
+    const startable = await applyBudget(due);
+    if (!startable.length) return;
+
+    // Parallel jobs first; --queue jobs only start when nothing else is running.
+    startable.sort((a, b) => {
+      const q = Number(wantsQueue(a)) - Number(wantsQueue(b));
+      if (q !== 0) return q;
+      return (b.schedule?.priority || 50) - (a.schedule?.priority || 50);
+    });
+
+    for (const t of startable) {
+      running = store.runningTasks().length;
+      if (max > 0 && running >= max) break;
+      if (inFlight.has(t.id)) continue;
+      if (wantsQueue(t) && running > 0) continue;
+      if (await isSystemBusy(t)) continue;
+
+      // Fire-and-forget so one long job does not serialize the whole worker.
+      executeTask(t).catch(async (e) => {
+        const cur = store.getTask(t.id);
+        if (!cur || cur.status === 'completed') return;
+        store.updateTask(t.id, {
+          status: 'failed',
+          execution: {
+            ...(cur.execution || {}),
+            error: e.message,
+            finishedAt: new Date().toISOString(),
+          },
+        });
+        await omnish.taskFailed(cur, e.message);
+      });
+    }
+  } finally {
+    tickLock = false;
   }
 }
 

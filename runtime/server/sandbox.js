@@ -10,7 +10,11 @@
  *   - network ON by default (agents need model APIs); set sandbox.network=false to cut egress
  *   - die-with-parent + unshare-pid
  *
- * Autonomy without isolation is unsafe YOLO. doctor + requireForAutonomous enforce that.
+ * Opt-in, off by default: runs go straight on the host (like cron) unless
+ * sandbox.enabled=true in config. Some Linux setups don't have bwrap/docker/firejail
+ * installed, and forcing isolation on by default broke runs there — set
+ * sandbox.enabled=true (and requireForAutonomous=true to hard-block YOLO without it)
+ * once a backend is confirmed working via `omnishpilot sandbox check`.
  */
 
 const fs = require('fs');
@@ -45,10 +49,10 @@ function expandUser(p) {
 function sandboxConfig(cfg = {}) {
   const s = cfg.sandbox || {};
   return {
-    enabled: s.enabled !== false,
+    enabled: s.enabled === true,
     backend: s.backend || 'auto',
     network: s.network !== false,
-    requireForAutonomous: s.requireForAutonomous !== false,
+    requireForAutonomous: s.requireForAutonomous === true,
     hidePaths: Array.isArray(s.hidePaths) ? s.hidePaths : DEFAULT_HIDE,
     extraBindRw: Array.isArray(s.extraBindRw) ? s.extraBindRw : [],
   };
@@ -95,7 +99,7 @@ function status(cfg) {
       ? 'Sandbox ready for autonomous agent runs'
       : sc.enabled
         ? 'No sandbox backend found (install bubblewrap: apt install bubblewrap)'
-        : 'Sandbox disabled in config (sandbox.enabled=false)',
+        : 'Sandbox off (opt-in) — jobs run on host. Set sandbox.enabled=true in config to turn it on.',
   };
 }
 

@@ -3,6 +3,14 @@
 This package is a **CLI autonomy harness**. Prefer the binary over reading source
 when helping a user schedule work.
 
+## Version bumps (mandatory)
+
+Do **not** invent semver. Read [VERSIONING.md](./VERSIONING.md) / `.cursor/rules/versioning.mdc`.
+
+- Cycle: `0.0.1 → 0.0.99 → 0.1.0 → … → 0.99.99 → 1.0.0`
+- Only: **`+0.0.1`** (normal) or **`+0.0.5`** (major/large capability), then carry after 99
+- Example from `0.0.6`: normal → `0.0.7`; major → `0.0.11` — never jump to `0.1.0` / `0.5.0`
+
 ## Discover without skills
 
 ```bash
@@ -22,9 +30,14 @@ omnip doctor --json
 omnishpilot add --now --follow --workspace /path/to/repo "goal text"
 omnishpilot add --daily 09:00 --workspace /path/to/repo "goal text"
 omnishpilot add --command --hourly "curl -fsS https://example.com/health >/dev/null"
+omnishpilot concurrency 8          # parallel overnight work (default 4)
+omnishpilot add --now --queue "…"  # this job waits until idle
 ```
 
 4. Track: `progress <id> --json`, `follow <id>`, `tasks --json`
+
+Jobs run **in parallel by default** (not a single serial queue). Use
+`concurrency serial` or per-job `--queue` when order matters.
 
 ## Skill (optional enrichment)
 

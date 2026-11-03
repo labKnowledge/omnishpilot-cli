@@ -761,15 +761,58 @@ app.post('/api/tasks/:id/run-now', async (req, res) => {
   if (!task) return res.status(404).json({ error: 'not_found' });
   if (enrichTask(task).paused) return res.status(409).json({ error: 'paused', hint: 'Resume the day or campaign first' });
   if (task.muted) return res.status(409).json({ error: 'muted', hint: 'Unmute this job first' });
-  if (store.runningTasks().length >= store.getSettings().maxConcurrent) {
-    return res.status(409).json({ error: 'system_busy', hint: 'Another task is running' });
+
+  const settings = store.getSettings();
+  const max = store.resolveMaxConcurrent(settings);
+  const running = store.runningTasks().length;
+  const body = req.body || {};
+  const wantQueue = body.queue === true
+    || req.query.queue === '1'
+    || req.query.queue === 'true'
+    || Boolean(task.schedule?.queue);
+
+  const atCapacity = max > 0 && running >= max;
+  const queueBlocked = wantQueue && running > 0;
+
+  if (atCapacity || queueBlocked) {
+    // Honest deferral — the job is queued, not failed.
+    const patched = store.updateTask(task.id, {
+      status: 'scheduled',
+      schedule: {
+        ...task.schedule,
+        type: 'now',
+        priority: 95,
+        ...(wantQueue ? { queue: true } : {}),
+      },
+    });
+    return res.json({
+      queued: true,
+      deferred: true,
+      running,
+      maxConcurrent: max === 0 ? 'unlimited' : max,
+      hint: queueBlocked
+        ? 'Queued until no other job is running (--queue)'
+        : `At capacity (${running}/${max}). Waiting for a free slot. Raise with: omnishpilot concurrency N (0=unlimited)`,
+      task: patched,
+    });
   }
-  try {
-    const result = await worker.executeTask({ ...task, status: 'scheduled' });
-    res.json(result);
-  } catch (e) {
-    res.status(500).json({ error: e.message });
-  }
+
+  // Start without awaiting completion so long jobs do not hold the HTTP request.
+  const kickoff = { ...task, status: 'scheduled' };
+  worker.executeTask(kickoff).catch((e) => {
+    console.error(`[run-now] ${task.id}:`, e.message);
+  });
+  // Give runOnce a tick to flip status → running
+  await new Promise((r) => setImmediate(r));
+  const live = store.getTask(task.id);
+  res.json({
+    started: true,
+    queued: false,
+    deferred: false,
+    running: store.runningTasks().length,
+    maxConcurrent: max === 0 ? 'unlimited' : max,
+    task: live,
+  });
 });
 
 app.post('/api/tasks/:id/duplicate', (req, res) => {
@@ -930,7 +973,11 @@ app.post('/api/sync', (_req, res) => {
 });
 
 app.patch('/api/settings', (req, res) => {
-  res.json(store.saveSettings(req.body || {}));
+  try {
+    res.json(store.saveSettings(req.body || {}));
+  } catch (e) {
+    res.status(400).json({ error: e.message });
+  }
 });
 
 app.get('/api/tasks/:id/outputs/:file', (req, res) => {

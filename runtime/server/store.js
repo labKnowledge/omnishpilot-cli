@@ -10,8 +10,11 @@ const FILES = {
   settings: 'settings.json',
 };
 
+/** Parallel by default. 0 = unlimited. Config worker.maxConcurrent overrides when settings omit it. */
+const DEFAULT_MAX_CONCURRENT = 4;
+
 const DEFAULT_SETTINGS = {
-  maxConcurrent: 1,
+  maxConcurrent: DEFAULT_MAX_CONCURRENT,
   notifyOnStart: true,
   notifyOnComplete: true,
   notifyOnFail: true,
@@ -23,6 +26,33 @@ const DEFAULT_SETTINGS = {
   deliveryPeer: '',
   publicUrl: '',
 };
+
+function maxConcurrentFromConfig() {
+  try {
+    const fromCfg = loadConfig().worker?.maxConcurrent;
+    if (fromCfg === 0 || fromCfg === 'unlimited') return 0;
+    if (Number.isFinite(Number(fromCfg)) && Number(fromCfg) > 0) return Math.floor(Number(fromCfg));
+  } catch { /* ignore */ }
+  return DEFAULT_MAX_CONCURRENT;
+}
+
+/**
+ * Resolve concurrency cap.
+ * 0 = unlimited. Prefer explicit settings value; else config.worker.maxConcurrent; else default 4.
+ */
+function resolveMaxConcurrent(settings) {
+  const src = settings || getSettings();
+  const raw = src.maxConcurrent;
+  if (raw === 0 || raw === 'unlimited' || raw === 'Unlimited') return 0;
+  if (Number.isFinite(Number(raw)) && Number(raw) > 0) return Math.floor(Number(raw));
+  return maxConcurrentFromConfig();
+}
+
+function concurrencySlotsFree(settings) {
+  const max = resolveMaxConcurrent(settings);
+  if (max === 0) return Infinity;
+  return Math.max(0, max - runningTasks().length);
+}
 
 function dataPath(name) {
   const cfg = loadConfig();
@@ -151,11 +181,27 @@ function runningTasks() {
 }
 
 function getSettings() {
-  return { ...DEFAULT_SETTINGS, ...readJson(FILES.settings, {}) };
+  const stored = readJson(FILES.settings, {});
+  const merged = { ...DEFAULT_SETTINGS, ...stored };
+  // If the file never set maxConcurrent, prefer config.worker.maxConcurrent over the code default.
+  if (!Object.prototype.hasOwnProperty.call(stored, 'maxConcurrent')) {
+    merged.maxConcurrent = maxConcurrentFromConfig();
+  }
+  return merged;
 }
 
 function saveSettings(patch) {
   const s = { ...getSettings(), ...patch };
+  if (patch && Object.prototype.hasOwnProperty.call(patch, 'maxConcurrent')) {
+    const n = patch.maxConcurrent;
+    if (n === 'unlimited' || n === 'Unlimited') s.maxConcurrent = 0;
+    else if (n === 'serial' || n === 'queue') s.maxConcurrent = 1;
+    else {
+      const num = Number(n);
+      if (!Number.isFinite(num) || num < 0) throw new Error('maxConcurrent must be >= 0 (0 = unlimited)');
+      s.maxConcurrent = Math.floor(num);
+    }
+  }
   writeJson(FILES.settings, s);
   return s;
 }
@@ -181,6 +227,9 @@ module.exports = {
   runningTasks,
   getSettings,
   saveSettings,
+  resolveMaxConcurrent,
+  concurrencySlotsFree,
+  DEFAULT_MAX_CONCURRENT,
   taskLogPath,
   tailLog,
   readJson,

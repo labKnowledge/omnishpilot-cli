@@ -9,7 +9,7 @@
   },
   "worker": {
     "pollIntervalMs": 5000,
-    "maxConcurrent": 1,
+    "maxConcurrent": 4,
     "supervisorIntervalMs": 300000,
     "retryBackoffSec": 120,
     "heartbeatIntervalMinutes": 10,
@@ -57,10 +57,10 @@
     "defaultSkills": []
   },
   "sandbox": {
-    "enabled": true,
+    "enabled": false,
     "backend": "auto",
     "network": true,
-    "requireForAutonomous": true,
+    "requireForAutonomous": false,
     "hidePaths": [
       "~/.ssh",
       "~/.aws",

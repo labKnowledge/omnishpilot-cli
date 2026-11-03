@@ -1,36 +1,18 @@
 ---
-description: OmnishPilot npm/Git version bump rules (+5 for major changes; roll over after 99 not 9)
+description: OmnishPilot versions — same as global (+0.0.1 / +0.0.5; carry after 99)
 alwaysApply: true
 ---
 
 # Versioning (omnishpilot)
 
-Do **not** use classic semver “bump by 1, roll after 9”.
+Same as the **global** rule `~/.cursor/rules/versioning-start-0-0-1.mdc`. Do not invent a different scheme.
 
-## Segment range
+```
+0.0.1 → 0.0.99 → 0.1.0 → … → 0.99.99 → 1.0.0
+```
 
-Each of `MAJOR.MINOR.PATCH` counts **0–99**. Carry to the next higher segment only after **99**:
+Only **`+0.0.1`** (normal) or **`+0.0.5`** (major/large capability), then carry after 99.
 
-- `0.0.99` → `0.1.0`
-- `0.99.99` → `1.0.0`
-- Never treat `9` as the rollover (e.g. `0.0.9` → `0.0.10`, not `0.1.0`)
+From `0.0.6`: normal → `0.0.7`; major → `0.0.11`.
 
-## Bump size
-
-| Change type | What to bump | How much |
-|-------------|--------------|----------|
-| Tiny fix / docs / chore | `PATCH` | **+1** |
-| Normal feature / non-breaking improvement | `MINOR` (reset patch to 0) | **+1** |
-| **Major upgrade or breaking / large capability change** | the segment you are advancing (usually `MAJOR`, or `MINOR` if still in 0.x) | **+5** |
-
-Examples from `0.0.1`:
-
-- typo fix → `0.0.2`
-- small feature → `0.1.0`
-- major autonomy/sandbox-class change → `0.5.0` (minor +5 while in 0.x) or `5.0.0` if cutting a true major line
-
-## Release alignment
-
-- `package.json` version, git tag `vX.Y.Z`, and npm publish must match.
-- Prefer `npm version` only after computing the correct next number under these rules (do not blindly `npm version major`).
-- Tag and push GitHub before or with npm publish so registry and repo stay aligned.
+Human copy: [VERSIONING.md](../../VERSIONING.md). Keep `package.json`, skill metadata, git tag, and npm publish identical.

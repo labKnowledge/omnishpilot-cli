@@ -1589,6 +1589,15 @@ function renderSettings() {
   const deliveryMode = s.deliveryMode || 'summary';
   return `
     <section class="section">
+      <h2>Parallelism</h2>
+      <p class="section-lead">Jobs run side by side by default. Set how many at once, or use 1 for a serial queue. Per-job CLI flag <code>--queue</code> waits until nothing else is running.</p>
+      <div class="settings-card settings-card--stacked">
+        <label for="set-max-concurrent">Max concurrent jobs (0 = unlimited)</label>
+        <input type="number" id="set-max-concurrent" min="0" step="1" value="${Number(s.maxConcurrent ?? 4)}"/>
+        <p class="hint">Default 4. CLI: <code>omnip concurrency 8</code> · <code>unlimited</code> · <code>serial</code></p>
+      </div>
+    </section>
+    <section class="section">
       <h2>Notifications</h2>
       <p class="section-lead">Omnish sends these to your phone when jobs change state.</p>
       <div class="settings-card"><label><input type="checkbox" id="set-start" ${s.notifyOnStart ? 'checked' : ''}/> Job started</label></div>
@@ -1617,7 +1626,7 @@ function renderSettings() {
       </div>
       <div class="settings-card settings-card--stacked" id="delivery-link-wrap" ${deliveryMode !== 'link' ? 'hidden' : ''}>
         <label for="set-public-url">Public link base URL</label>
-        <input type="text" id="set-public-url" placeholder="https://omnishpilot.eligapris.tech" value="${esc(s.publicUrl || '')}"/>
+        <input type="text" id="set-public-url" placeholder="https://eligapris.com/omnishpilot" value="${esc(s.publicUrl || '')}"/>
         <p class="hint">Used when delivery mode is Message + link.</p>
       </div>
       <div class="settings-actions">
@@ -2455,6 +2464,7 @@ function bindMain() {
     await fetch('/api/auth/logout', { method: 'POST', credentials: 'same-origin' });
     location.replace('/login.html');
   });
+  document.getElementById('set-max-concurrent')?.addEventListener('change', saveSettings);
   document.getElementById('set-start')?.addEventListener('change', saveSettings);
   document.getElementById('set-done')?.addEventListener('change', saveSettings);
   document.getElementById('set-fail')?.addEventListener('change', saveSettings);
@@ -2474,9 +2484,12 @@ function bindMain() {
 }
 
 async function saveSettings() {
+  const maxRaw = document.getElementById('set-max-concurrent')?.value;
+  const maxConcurrent = maxRaw === '' || maxRaw == null ? undefined : Number(maxRaw);
   await api('/api/settings', {
     method: 'PATCH',
     body: {
+      ...(Number.isFinite(maxConcurrent) && maxConcurrent >= 0 ? { maxConcurrent: Math.floor(maxConcurrent) } : {}),
       notifyOnStart: document.getElementById('set-start')?.checked,
       notifyOnComplete: document.getElementById('set-done')?.checked,
       notifyOnFail: document.getElementById('set-fail')?.checked,

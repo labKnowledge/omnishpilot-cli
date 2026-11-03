@@ -7,16 +7,17 @@ description: >-
   agent work, recurring automation, agent-run scheduling, cron for coding agents,
   or OmnishPilot setup/doctor/sandbox.
 metadata:
-  version: 0.0.6
+  version: 0.0.11
   cli: omnishpilot
   homepage: https://github.com/labKnowledge/omnishpilot-cli
 ---
 
 # OmnishPilot — schedule agents that finish alone
 
-OmnishPilot is a **local autonomy harness**. It queues jobs, runs any agent CLI
-on PATH (or a plain shell command) **unattended inside a sandbox**, tracks
-progress, and can notify when work is done.
+OmnishPilot is a **local autonomy harness**. It runs jobs in **parallel by
+default** (cap 4; configurable), runs any agent CLI on PATH (or a plain shell
+command) **unattended** (sandbox optional), tracks progress, and can notify
+when work is done. Pass `--queue` on a job to wait until the machine is idle.
 
 Binaries after `npm i -g omnishpilot`: `omnishpilot`, short alias **`omnip`**,
 `agentboard` (legacy alias), `agent-run` (bundled). Prefer `omnip` in examples.
@@ -82,6 +83,9 @@ still ships here so automation works without oversight.
 | Every day / hour / week | `omnishpilot add --daily 09:00 "…"` / `--hourly` / `--weekly mon 09:30` |
 | Pure script, no LLM | `omnishpilot add --command --daily 02:00 --workspace ~/data "./backup.sh"` |
 | Full feature / greenfield unattended | `omnishpilot add --dev --now --follow --workspace ~/proj "…"` |
+| Run many overnight jobs in parallel | default (cap 4); raise with `omnishpilot concurrency 8` |
+| This job must wait until idle | `omnishpilot add --now --queue "…"` |
+| Old one-at-a-time queue | `omnishpilot concurrency serial` |
 | Track a job you created | `omnishpilot progress <id> --json` then `follow <id>` |
 | Is the machine ready? | `omnishpilot doctor --json` |
 | Cap spend / time | `omnishpilot budget --minutes 180 --usd 20` |
@@ -92,7 +96,8 @@ still ships here so automation works without oversight.
 2. Always prefer `--json` when parsing output.
 3. After `add`, capture the returned job `id`; use `follow` / `progress` / `tasks`.
 4. For coding work, pass `--workspace` to the repo root (Dev OS auto-attaches in `auto` mode).
-5. Unattended agent jobs need a healthy sandbox (`doctor` + `sandbox check`).
+5. Sandboxing is opt-in (off by default — jobs run on host). Turn it on with
+   `sandbox.enabled=true` in config once `sandbox check` shows a healthy backend.
 6. Do not invent flags. Run `omnishpilot guide --json` or `help` if unsure.
 
 ## ADD contract (summary)
@@ -117,9 +122,13 @@ omnishpilot add "do xyz"
 | `-c / --command` | Shell job, no agent |
 | `--agent <id>` | cursor-agent \| claude \| agy \| auto |
 | `--acceptance <text>` | Done-when gates |
+| `--queue` | Opt-in: wait until no other job is running |
 | `-f / --follow` | Block until done (exit 0/1) |
 | `--json` | Machine output |
 | `-n / --dry-run` | Print spec only |
+
+Parallelism: up to **4** jobs at once by default (`worker.maxConcurrent` / Settings).
+`0` or `omnishpilot concurrency unlimited` removes the cap.
 
 Full detail: [references/cli-contract.md](references/cli-contract.md)  
 Recipes: [references/recipes.md](references/recipes.md)
@@ -140,10 +149,12 @@ omnishpilot watch                       # live dashboard
 API-ish commands **auto-start** the daemon. Disable with `--no-autostart` or
 `OMNISHPILOT_NO_AUTOSTART=1`.
 
-## Sandbox (required for safe autonomy)
+## Sandbox (optional, off by default)
 
-Skip-permissions / YOLO only runs when isolation is healthy (Linux **bwrap**
-preferred; docker / firejail fallbacks).
+Jobs run on the host by default, like cron. Set `sandbox.enabled=true` in config
+to wrap unattended runs in isolation (Linux **bwrap** preferred; docker / firejail
+fallbacks). With `sandbox.requireForAutonomous=true`, skip-permissions / YOLO
+refuses to run unless that isolation is healthy.
 
 ```bash
 omnishpilot sandbox status
@@ -187,7 +198,7 @@ omnishpilot add --now --follow --workspace ~/proj "fix the login bug; leave a pa
 ```
 - [ ] npm i -g omnishpilot  (or npx)
 - [ ] omnishpilot doctor clean
-- [ ] Linux: bubblewrap + sandbox deny-test
+- [ ] Linux (optional): bubblewrap + `sandbox.enabled=true` + sandbox deny-test
 - [ ] omnishpilot start -d  (or service install)
 - [ ] At least one agent CLI on PATH for agent jobs (cursor-agent / claude / …)
 - [ ] First job: add --now --follow "…"

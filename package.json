@@ -1,7 +1,7 @@
 {
   "name": "omnishpilot",
-  "version": "0.0.6",
-  "description": "OmnishPilot CLI — free autonomy harness: sandboxed unattended agent jobs (Linux, macOS, Windows)",
+  "version": "0.0.11",
+  "description": "OmnishPilot CLI — free autonomy harness: unattended agent jobs with optional sandboxing (Linux, macOS, Windows)",
   "license": "MIT",
   "bin": {
     "omnishpilot": "bin/omnishpilot.js",
@@ -19,6 +19,7 @@
     "brand",
     "omnishpilot.config.example.json",
     "AGENTS.md",
+    "VERSIONING.md",
     "README.md",
     "LICENSE"
   ],

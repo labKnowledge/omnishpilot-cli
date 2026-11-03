@@ -41,7 +41,7 @@ function buildSummary(task) {
 }
 
 function publicTaskUrl(task, settings) {
-  const base = settings.publicUrl || loadConfig().publicUrl || 'https://omnishpilot.eligapris.tech';
+  const base = settings.publicUrl || loadConfig().publicUrl || 'https://eligapris.com/omnishpilot';
   return `${base.replace(/\/$/, '')}/?task=${task.id}`;
 }
 
@@ -155,7 +155,7 @@ async function sendTestDelivery(settings) {
     );
   }
   if (mode === 'link') {
-    const base = settings?.publicUrl || loadConfig().publicUrl || 'https://omnishpilot.eligapris.tech';
+    const base = settings?.publicUrl || loadConfig().publicUrl || 'https://eligapris.com/omnishpilot';
     return omnish.notify(
       'OmnishPilot delivery test',
       `Link delivery is enabled.\n\nExample: ${base}`,
